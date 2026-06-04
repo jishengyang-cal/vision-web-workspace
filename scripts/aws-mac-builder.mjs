@@ -303,6 +303,13 @@ function aws(args, options = {}) {
 
   if (result.status !== 0 && !options.allowFail) {
     const detail = result.stderr || result.stdout || `aws ${fullArgs.join(" ")} failed`;
+    if (detail.includes("The config profile") && detail.includes("could not be found")) {
+      console.error(`AWS profile is not configured: ${config.profile}`);
+      console.error("Configure it with:");
+      console.error(`  aws configure sso --profile ${config.profile}`);
+      console.error(`  aws sts get-caller-identity --profile ${config.profile}`);
+      process.exit(2);
+    }
     throw new Error(detail.trim());
   }
 
