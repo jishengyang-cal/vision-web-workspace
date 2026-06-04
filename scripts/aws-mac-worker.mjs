@@ -212,6 +212,7 @@ function getHourlyPriceUsd() {
   }
 
   const location = regionLocation(config.region);
+  const hostUsageType = `${regionUsagePrefix(config.region)}-HostUsage:${hostFamilyFromInstanceType(config.instanceType)}`;
   const payload = awsJson(
     [
       "pricing",
@@ -219,10 +220,10 @@ function getHourlyPriceUsd() {
       "--service-code",
       "AmazonEC2",
       "--filters",
-      `Type=TERM_MATCH,Field=instanceType,Value=${config.instanceType}`,
+      `Type=TERM_MATCH,Field=usagetype,Value=${hostUsageType}`,
       `Type=TERM_MATCH,Field=location,Value=${location}`,
       "Type=TERM_MATCH,Field=tenancy,Value=Host",
-      "Type=TERM_MATCH,Field=operatingSystem,Value=macOS"
+      "Type=TERM_MATCH,Field=capacitystatus,Value=AllocatedHost"
     ],
     { region: "us-east-1" }
   );
@@ -241,6 +242,10 @@ function getHourlyPriceUsd() {
   }
 
   throw new Error("Could not resolve EC2 Mac hourly price from AWS Pricing API. Set AWS_MAC_WORKER_HOURLY_USD explicitly.");
+}
+
+function hostFamilyFromInstanceType(instanceType) {
+  return instanceType.replace(/\.metal$/, "");
 }
 
 function getMacAmiId() {
@@ -308,6 +313,7 @@ function ensureSecurityGroup() {
   ]);
   const groupId = existing.SecurityGroups?.[0]?.GroupId;
   if (groupId) {
+    tagSecurityGroup(groupId);
     return groupId;
   }
 
@@ -325,15 +331,19 @@ function ensureSecurityGroup() {
   if (!securityGroupId) {
     throw new Error("create-security-group did not return GroupId");
   }
+  tagSecurityGroup(securityGroupId);
+  return securityGroupId;
+}
+
+function tagSecurityGroup(securityGroupId) {
   aws([
     "ec2",
     "create-tags",
     "--resources",
     securityGroupId,
     "--tags",
-    tagList({ Role: "mac-builder", Name: config.securityGroupName })
+    ...tagArgs({ Role: "mac-builder", Name: config.securityGroupName })
   ]);
-  return securityGroupId;
 }
 
 function getBaselineOutputs() {
@@ -396,6 +406,16 @@ function regionLocation(region) {
   return locations[region] ?? "US East (Ohio)";
 }
 
+function regionUsagePrefix(region) {
+  const prefixes = {
+    "us-east-1": "USE1",
+    "us-east-2": "USE2",
+    "us-west-1": "USW1",
+    "us-west-2": "USW2"
+  };
+  return prefixes[region] ?? "USE2";
+}
+
 function tagSpec(resourceType, extraTags) {
   return `ResourceType=${resourceType},Tags=[${tagList(extraTags)}]`;
 }
@@ -410,6 +430,16 @@ function tagList(extraTags = {}) {
   return Object.entries(tags)
     .map(([Key, Value]) => `{Key=${Key},Value=${Value}}`)
     .join(",");
+}
+
+function tagArgs(extraTags = {}) {
+  const tags = {
+    Project: "vision-web-workspace",
+    Environment: config.environment,
+    ManagedBy: "aws-mac-worker",
+    ...extraTags
+  };
+  return Object.entries(tags).map(([Key, Value]) => `Key=${Key},Value=${Value}`);
 }
 
 function assertAwsReady() {
