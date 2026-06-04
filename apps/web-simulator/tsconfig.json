@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "noEmit": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": "../..",
+    "paths": {
+      "@vision-web-workspace/contracts": ["packages/contracts/src/index.ts"],
+      "@vision-web-workspace/window-manager": ["packages/window-manager/src/index.ts"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "../../packages/contracts/src/**/*.ts",
+    "../../packages/window-manager/src/**/*.ts"
+  ]
+}

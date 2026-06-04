@@ -1,0 +1,387 @@
+import {
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+  type CSSProperties,
+  type Dispatch,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent
+} from "react";
+import {
+  createDefaultLayout,
+  type WebWindowSpec,
+  type WindowKind,
+  type WorkspaceLayoutSpec
+} from "@vision-web-workspace/contracts";
+import {
+  createWebWindow,
+  parseLayout,
+  serializeLayout,
+  workspaceReducer
+} from "@vision-web-workspace/window-manager";
+
+const storageKey = "vision-web-workspace.layout.v1";
+
+const defaultUrls: Record<WindowKind, string> = {
+  terminal: import.meta.env.VITE_TERMINAL_URL ?? "http://localhost:7681",
+  code: import.meta.env.VITE_CODE_URL ?? "http://localhost:8080",
+  browser: import.meta.env.VITE_BROWSER_URL ?? "https://example.com",
+  docs: import.meta.env.VITE_DOCS_URL ?? "https://developer.apple.com/visionos/",
+  logs: import.meta.env.VITE_LOGS_URL ?? "http://localhost:3001/logs"
+};
+
+const defaultTitles: Record<WindowKind, string> = {
+  terminal: "Terminal",
+  code: "Code",
+  browser: "Browser",
+  docs: "Docs",
+  logs: "Logs"
+};
+
+const gatewayUrl =
+  (import.meta.env.VITE_GATEWAY_URL as string | undefined) ??
+  "http://localhost:3001";
+
+export function App() {
+  const initialLayout = useMemo(
+    () =>
+      createDefaultLayout({
+        terminalUrl: defaultUrls.terminal,
+        codeUrl: defaultUrls.code,
+        browserUrl: defaultUrls.browser
+      }),
+    []
+  );
+
+  const [state, dispatch] = useReducer(
+    workspaceReducer,
+    initialLayout,
+    loadLayout
+  );
+  const [frameInputLocked, setFrameInputLocked] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, serializeLayout(state));
+  }, [state]);
+
+  function loadLayout(layout: WorkspaceLayoutSpec): WorkspaceLayoutSpec {
+    const saved = localStorage.getItem(storageKey);
+    if (!saved) {
+      return layout;
+    }
+
+    try {
+      return parseLayout(saved);
+    } catch {
+      return layout;
+    }
+  }
+
+  async function createWindow(kind: WindowKind) {
+    const index = state.windows.filter((window) => window.kind === kind).length;
+    const id = `${kind}-${Date.now()}`;
+    const offset = 40 * (index + 1);
+    const url = await resolveSessionUrl(kind, state.id);
+
+    dispatch({
+      type: "create",
+      window: createWebWindow({
+        id,
+        kind,
+        title: index === 0 ? defaultTitles[kind] : `${defaultTitles[kind]} ${index + 1}`,
+        url,
+        rect: {
+          x: 132 + offset,
+          y: 116 + offset,
+          width: kind === "code" ? 760 : 640,
+          height: kind === "code" ? 520 : 400
+        }
+      })
+    });
+  }
+
+  function resetLayout() {
+    localStorage.removeItem(storageKey);
+    dispatch({ type: "restore", layout: initialLayout });
+  }
+
+  function setPose(patch: Partial<WorkspaceLayoutSpec["pose"]>) {
+    dispatch({
+      type: "restore",
+      layout: {
+        ...state,
+        pose: {
+          ...state.pose,
+          ...patch
+        }
+      }
+    });
+  }
+
+  const workspaceStyle = {
+    "--workspace-yaw": `${state.pose.yawDegrees}deg`,
+    "--workspace-pitch": `${state.pose.pitchDegrees}deg`,
+    "--workspace-distance": `${state.pose.distanceMeters}`,
+    "--workspace-scale": `${Math.max(0.68, Math.min(1.08, 1.35 / state.pose.distanceMeters))}`
+  } as CSSProperties;
+
+  return (
+    <main className="shell">
+      <aside className="control-rail">
+        <div>
+          <div className="brand">Vision Web Workspace</div>
+          <div className="status-pill">head-locked web desktop</div>
+        </div>
+
+        <div className="tool-group">
+          <button onClick={() => void createWindow("terminal")}>Terminal</button>
+          <button onClick={() => void createWindow("code")}>Code</button>
+          <button onClick={() => void createWindow("browser")}>Browser</button>
+          <button onClick={() => void createWindow("docs")}>Docs</button>
+          <button onClick={() => void createWindow("logs")}>Logs</button>
+        </div>
+
+        <div className="tool-group">
+          <label>
+            Distance
+            <input
+              min="0.9"
+              max="1.8"
+              step="0.05"
+              type="range"
+              value={state.pose.distanceMeters}
+              onChange={(event) =>
+                setPose({ distanceMeters: Number(event.currentTarget.value) })
+              }
+            />
+          </label>
+          <label>
+            Yaw
+            <input
+              min="-18"
+              max="18"
+              step="1"
+              type="range"
+              value={state.pose.yawDegrees}
+              onChange={(event) =>
+                setPose({ yawDegrees: Number(event.currentTarget.value) })
+              }
+            />
+          </label>
+          <label>
+            Pitch
+            <input
+              min="-14"
+              max="8"
+              step="1"
+              type="range"
+              value={state.pose.pitchDegrees}
+              onChange={(event) =>
+                setPose({ pitchDegrees: Number(event.currentTarget.value) })
+              }
+            />
+          </label>
+        </div>
+
+        <div className="tool-group">
+          <button onClick={() => localStorage.setItem(storageKey, serializeLayout(state))}>
+            Save Layout
+          </button>
+          <button onClick={resetLayout}>Reset</button>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={frameInputLocked}
+              onChange={(event) => setFrameInputLocked(event.currentTarget.checked)}
+            />
+            Lock iframe input
+          </label>
+        </div>
+      </aside>
+
+      <section className="sim-stage">
+        <div className="passthrough-grid" />
+        <div className="workspace-perspective" style={workspaceStyle}>
+          <div className="workspace-root">
+            <div className="workspace-header">
+              <span>{state.name}</span>
+              <span>{state.windows.length} windows</span>
+            </div>
+            {state.windows.map((window) => (
+              <SpatialWindow
+                dispatch={dispatch}
+                inputLocked={frameInputLocked}
+                key={window.id}
+                webWindow={window}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+async function resolveSessionUrl(
+  kind: WindowKind,
+  workspaceId: string
+): Promise<string> {
+  if (!gatewayUrl) {
+    return defaultUrls[kind];
+  }
+
+  try {
+    const response = await fetch(`${gatewayUrl.replace(/\/$/, "")}/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId, kind })
+    });
+
+    if (!response.ok) {
+      return defaultUrls[kind];
+    }
+
+    const payload = (await response.json()) as {
+      session?: { url?: string };
+    };
+
+    return payload.session?.url ?? defaultUrls[kind];
+  } catch {
+    return defaultUrls[kind];
+  }
+}
+
+function SpatialWindow({
+  webWindow,
+  dispatch,
+  inputLocked
+}: {
+  webWindow: WebWindowSpec;
+  dispatch: Dispatch<Parameters<typeof workspaceReducer>[1]>;
+  inputLocked: boolean;
+}) {
+  const [draftUrl, setDraftUrl] = useState(webWindow.url);
+
+  useEffect(() => {
+    setDraftUrl(webWindow.url);
+  }, [webWindow.url]);
+
+  function beginDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (webWindow.locked) {
+      return;
+    }
+
+    const pointerId = event.pointerId;
+    const start = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(pointerId);
+    dispatch({ type: "focus", windowId: webWindow.id });
+
+    function onMove(moveEvent: PointerEvent) {
+      dispatch({
+        type: "move",
+        windowId: webWindow.id,
+        delta: {
+          x: moveEvent.clientX - start.x,
+          y: moveEvent.clientY - start.y
+        }
+      });
+      start.x = moveEvent.clientX;
+      start.y = moveEvent.clientY;
+    }
+
+    function onUp() {
+      globalThis.window.removeEventListener("pointermove", onMove);
+      globalThis.window.removeEventListener("pointerup", onUp);
+    }
+
+    globalThis.window.addEventListener("pointermove", onMove);
+    globalThis.window.addEventListener("pointerup", onUp);
+  }
+
+  function beginResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    const pointerId = event.pointerId;
+    const start = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(pointerId);
+    dispatch({ type: "focus", windowId: webWindow.id });
+
+    function onMove(moveEvent: PointerEvent) {
+      dispatch({
+        type: "resize",
+        windowId: webWindow.id,
+        delta: {
+          width: moveEvent.clientX - start.x,
+          height: moveEvent.clientY - start.y
+        }
+      });
+      start.x = moveEvent.clientX;
+      start.y = moveEvent.clientY;
+    }
+
+    function onUp() {
+      globalThis.window.removeEventListener("pointermove", onMove);
+      globalThis.window.removeEventListener("pointerup", onUp);
+    }
+
+    globalThis.window.addEventListener("pointermove", onMove);
+    globalThis.window.addEventListener("pointerup", onUp);
+  }
+
+  function submitUrl(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    dispatch({ type: "set-url", windowId: webWindow.id, url: draftUrl });
+  }
+
+  return (
+    <article
+      className={`spatial-window ${webWindow.focused ? "focused" : ""}`}
+      onPointerDown={() => dispatch({ type: "focus", windowId: webWindow.id })}
+      style={{
+        left: webWindow.rect.x,
+        top: webWindow.rect.y,
+        width: webWindow.rect.width,
+        height: webWindow.rect.height,
+        zIndex: webWindow.zIndex
+      }}
+    >
+      <div className="titlebar" onPointerDown={beginDrag}>
+        <div>
+          <span className={`kind-dot ${webWindow.kind}`} />
+          <strong>{webWindow.title}</strong>
+        </div>
+        <button
+          aria-label={`Close ${webWindow.title}`}
+          className="icon-button"
+          onClick={() => dispatch({ type: "close", windowId: webWindow.id })}
+        >
+          x
+        </button>
+      </div>
+
+      <form className="addressbar" onSubmit={submitUrl}>
+        <input
+          value={draftUrl}
+          onChange={(event) => setDraftUrl(event.currentTarget.value)}
+        />
+        <button>Go</button>
+      </form>
+
+      <div className="frame-wrap">
+        {inputLocked ? <div className="frame-shield" /> : null}
+        <iframe
+          allow="clipboard-read; clipboard-write; fullscreen"
+          referrerPolicy="no-referrer"
+          src={webWindow.url}
+          title={webWindow.title}
+        />
+      </div>
+
+      <button
+        aria-label={`Resize ${webWindow.title}`}
+        className="resize-handle"
+        onPointerDown={beginResize}
+      />
+    </article>
+  );
+}

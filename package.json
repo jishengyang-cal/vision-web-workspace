@@ -1,0 +1,23 @@
+{
+  "name": "vision-web-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "dev": "pnpm --filter @vision-web-workspace/web-simulator dev",
+    "dev:web": "pnpm --filter @vision-web-workspace/web-simulator dev",
+    "dev:gateway": "pnpm --filter @vision-web-workspace/gateway dev",
+    "serve:web": "node scripts/serve-web-simulator.mjs",
+    "serve:gateway": "node services/gateway/dist/index.js",
+    "build": "pnpm build:packages && pnpm --filter @vision-web-workspace/gateway build && pnpm --filter @vision-web-workspace/web-simulator build",
+    "build:packages": "pnpm --filter @vision-web-workspace/contracts build && pnpm --filter @vision-web-workspace/window-manager build",
+    "typecheck": "pnpm build:packages && pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "clean": "find . -name dist -type d -prune -exec rm -rf {} + && find . -name .vite -type d -prune -exec rm -rf {} +"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^6.0.3"
+  }
+}

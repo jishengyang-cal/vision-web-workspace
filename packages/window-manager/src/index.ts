@@ -1,0 +1,195 @@
+import type {
+  Rect,
+  Size,
+  WebWindowSpec,
+  WindowKind,
+  WorkspaceLayoutSpec
+} from "@vision-web-workspace/contracts";
+
+export interface WorkspaceState extends WorkspaceLayoutSpec {}
+
+export type WorkspaceAction =
+  | { type: "focus"; windowId: string }
+  | { type: "move"; windowId: string; delta: { x: number; y: number } }
+  | { type: "resize"; windowId: string; delta: { width: number; height: number } }
+  | { type: "create"; window: Omit<WebWindowSpec, "zIndex" | "focused"> }
+  | { type: "close"; windowId: string }
+  | { type: "set-url"; windowId: string; url: string }
+  | { type: "restore"; layout: WorkspaceLayoutSpec };
+
+export function workspaceReducer(
+  state: WorkspaceState,
+  action: WorkspaceAction
+): WorkspaceState {
+  switch (action.type) {
+    case "focus":
+      return focusWindow(state, action.windowId);
+    case "move":
+      return updateWindow(state, action.windowId, (window) => ({
+        ...window,
+        rect: clampRect(
+          {
+            ...window.rect,
+            x: window.rect.x + action.delta.x,
+            y: window.rect.y + action.delta.y
+          },
+          state.viewport,
+          window.minSize
+        )
+      }));
+    case "resize":
+      return updateWindow(state, action.windowId, (window) => ({
+        ...window,
+        rect: clampRect(
+          {
+            ...window.rect,
+            width: window.rect.width + action.delta.width,
+            height: window.rect.height + action.delta.height
+          },
+          state.viewport,
+          window.minSize
+        )
+      }));
+    case "create":
+      return createWindow(state, action.window);
+    case "close":
+      return closeWindow(state, action.windowId);
+    case "set-url":
+      return updateWindow(state, action.windowId, (window) => ({
+        ...window,
+        url: normalizeUrl(action.url)
+      }));
+    case "restore":
+      return stamp(action.layout);
+    default:
+      return state;
+  }
+}
+
+export function createWebWindow(
+  options: {
+    id: string;
+    title: string;
+    kind: WindowKind;
+    url: string;
+    rect: Rect;
+    minSize?: Size;
+    locked?: boolean;
+  }
+): Omit<WebWindowSpec, "zIndex" | "focused"> {
+  return {
+    id: options.id,
+    title: options.title,
+    kind: options.kind,
+    url: normalizeUrl(options.url),
+    rect: options.rect,
+    minSize: options.minSize ?? { width: 360, height: 240 },
+    locked: options.locked ?? false
+  };
+}
+
+export function serializeLayout(state: WorkspaceState): string {
+  return JSON.stringify(state, null, 2);
+}
+
+export function parseLayout(raw: string): WorkspaceLayoutSpec {
+  const parsed = JSON.parse(raw) as WorkspaceLayoutSpec;
+
+  if (!parsed.id || !Array.isArray(parsed.windows)) {
+    throw new Error("Invalid workspace layout");
+  }
+
+  return parsed;
+}
+
+function updateWindow(
+  state: WorkspaceState,
+  windowId: string,
+  update: (window: WebWindowSpec) => WebWindowSpec
+): WorkspaceState {
+  return stamp({
+    ...state,
+    windows: state.windows.map((window) =>
+      window.id === windowId && !window.locked ? update(window) : window
+    )
+  });
+}
+
+function focusWindow(state: WorkspaceState, windowId: string): WorkspaceState {
+  const nextZ = Math.max(0, ...state.windows.map((window) => window.zIndex)) + 1;
+
+  return stamp({
+    ...state,
+    activeWindowId: windowId,
+    windows: state.windows.map((window) => ({
+      ...window,
+      focused: window.id === windowId,
+      zIndex: window.id === windowId ? nextZ : window.zIndex
+    }))
+  });
+}
+
+function createWindow(
+  state: WorkspaceState,
+  window: Omit<WebWindowSpec, "zIndex" | "focused">
+): WorkspaceState {
+  const nextZ = Math.max(0, ...state.windows.map((item) => item.zIndex)) + 1;
+  const newWindow: WebWindowSpec = {
+    ...window,
+    url: normalizeUrl(window.url),
+    rect: clampRect(window.rect, state.viewport, window.minSize),
+    zIndex: nextZ,
+    focused: true
+  };
+
+  return stamp({
+    ...state,
+    activeWindowId: newWindow.id,
+    windows: [
+      ...state.windows.map((item) => ({ ...item, focused: false })),
+      newWindow
+    ]
+  });
+}
+
+function closeWindow(state: WorkspaceState, windowId: string): WorkspaceState {
+  const windows = state.windows.filter((window) => window.id !== windowId);
+  const activeWindow = [...windows].sort((a, b) => b.zIndex - a.zIndex)[0];
+
+  return stamp({
+    ...state,
+    activeWindowId: activeWindow?.id ?? null,
+    windows: windows.map((window) => ({
+      ...window,
+      focused: window.id === activeWindow?.id
+    }))
+  });
+}
+
+function clampRect(rect: Rect, viewport: Size, minSize: Size): Rect {
+  const width = clamp(rect.width, minSize.width, viewport.width);
+  const height = clamp(rect.height, minSize.height, viewport.height);
+  const x = clamp(rect.x, 0, Math.max(0, viewport.width - width));
+  const y = clamp(rect.y, 0, Math.max(0, viewport.height - height));
+
+  return { x, y, width, height };
+}
+
+function normalizeUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  return `https://${url}`;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function stamp<T extends WorkspaceLayoutSpec>(state: T): T {
+  return {
+    ...state,
+    updatedAt: new Date().toISOString()
+  };
+}
