@@ -107,6 +107,13 @@ function createRequest(kind, mockResult) {
       branch: "main",
       commitSha: "0000000000000000000000000000000000000000"
     },
+    project: {
+      sourceRoot: "native/visionos",
+      projectPath: "native/visionos/VisionWebWorkspace.xcodeproj",
+      scheme: "VisionWebWorkspace",
+      generator: "xcodegen",
+      generatorSpecPath: "native/visionos/project.yml"
+    },
     target: {
       scheme: "VisionWebWorkspace",
       configuration: kind === "archive" ? "Release" : "Debug",

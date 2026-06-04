@@ -21,6 +21,7 @@
     "compliance:check": "node scripts/compliance-check.mjs",
     "visionos:preflight": "node scripts/visionos-workflow.mjs preflight",
     "visionos:workflow:plan": "node scripts/visionos-workflow.mjs plan",
+    "visionos:native:plan": "node scripts/visionos-workflow.mjs native-plan",
     "visionos:mac-build:check": "node scripts/visionos-workflow.mjs mac-build-check",
     "aws:mac:plan": "node scripts/aws-mac-builder.mjs plan",
     "aws:mac:doctor": "node scripts/aws-mac-builder.mjs doctor",

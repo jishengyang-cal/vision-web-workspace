@@ -33,6 +33,9 @@ services/
   gateway/             Minimal session gateway skeleton.
   mac-builder-mock/    Mock Mac builder control-plane service.
 
+native/
+  visionos/            SwiftUI/RealityKit app shell and XcodeGen spec.
+
 docs/
   architecture.md      Product and system architecture notes.
   workflows/           visionOS, MCP, and hook workflow documents.
@@ -109,6 +112,8 @@ BROWSER_URL=https://example.com
 - Minimal gateway endpoints for controlled session creation.
 - Tool doctor and workflow compliance checks.
 - Docker-backed local terminal and code-server services.
+- Native visionOS SwiftUI/RealityKit source skeleton and XcodeGen project spec.
+- Structured Mac Builder request metadata for the native project path.
 
 ## Workflow checks
 
@@ -117,6 +122,7 @@ pnpm tools:doctor
 pnpm compliance:check
 pnpm visionos:preflight
 pnpm visionos:workflow:plan
+pnpm visionos:native:plan
 pnpm workflow:check
 pnpm test:mac-builder
 ```
@@ -160,5 +166,5 @@ pnpm hooks:install
 - Add real terminal gateway integration with ttyd or xterm.js.
 - Add remote browser gateway integration with noVNC, KasmVNC, Xpra, or WebRTC.
 - Add Playwright tests for move, resize, focus, and session creation.
-- Add a native SwiftUI/RealityKit shell generator.
-- Add an optional audited Mac builder adapter.
+- Add a Mac Builder worker that generates the Xcode project and runs `xcodebuild`.
+- Add device-lab and release adapters after Apple Developer Program setup.

@@ -22,6 +22,7 @@ Run the visionOS workflow preflight and workflow planner:
 ```bash
 pnpm visionos:preflight
 pnpm visionos:workflow:plan
+pnpm visionos:native:plan
 pnpm test:mac-builder
 ```
 
@@ -54,6 +55,7 @@ code-server: http://127.0.0.1:8080
 - Mock Mac Builder for Linux-side build adapter lifecycle tests.
 - ttyd through Docker for a browser terminal window.
 - code-server through Docker for a browser IDE window.
+- Native visionOS source inspection and Mac Builder request planning.
 
 ### Useful but optional in this Linux environment
 

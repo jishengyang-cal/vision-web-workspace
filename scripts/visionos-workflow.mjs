@@ -9,6 +9,9 @@ switch (command) {
   case "plan":
     printPlan();
     break;
+  case "native-plan":
+    printNativePlan();
+    break;
   case "preflight":
     runPreflight();
     break;
@@ -25,6 +28,9 @@ function printPlan() {
   console.log(`${workflow.name} workflow v${workflow.version}`);
   console.log(`Boundary: ${workflow.hardBoundary}\n`);
 
+  printNativeProjectSummary();
+  console.log("");
+
   for (const phase of workflow.phases) {
     const capabilities = phase.capabilities.join(", ");
     const runnable = phase.command ? phase.command : "future adapter";
@@ -36,12 +42,26 @@ function printPlan() {
   }
 }
 
+function printNativePlan() {
+  console.log("Native visionOS project plan\n");
+  printNativeProjectSummary();
+  console.log("");
+  console.log("Mac Builder commands:");
+  console.log(`  generate: xcodegen generate --spec ${nativeProject().generatorSpecPath}`);
+  console.log(
+    `  build:    xcodebuild -project ${nativeProject().projectPath} -scheme ${nativeProject().scheme} -configuration Debug -destination "${defaultTarget().destination}" -sdk xrsimulator build`
+  );
+  console.log("");
+  console.log("Linux boundary: this command only prints the plan and does not execute XcodeGen or xcodebuild.");
+}
+
 function runPreflight() {
   console.log("Running visionOS workflow preflight.\n");
   run("pnpm", ["run", "tools:doctor"]);
   run("pnpm", ["run", "compliance:check"]);
 
   console.log("\nNative visionOS status:");
+  printNativeProjectSummary();
   console.log("- Linux workflow: available.");
   console.log("- Native Xcode workflow: requires Mac builder or local macOS/Xcode.");
   console.log("- Device/release workflow: requires Apple credentials and explicit adapter.");
@@ -123,11 +143,12 @@ function createMacBuilderRequest() {
   const base = {
     kind,
     repoRef,
+    project: createMacBuildProject(),
     target: {
-      scheme: process.env.VISIONOS_SCHEME ?? "VisionWebWorkspace",
-      configuration: process.env.VISIONOS_CONFIGURATION ?? "Debug",
-      destination: process.env.VISIONOS_DESTINATION ?? "platform=visionOS Simulator,name=Apple Vision Pro",
-      sdk: process.env.VISIONOS_SDK ?? "xrsimulator"
+      scheme: process.env.VISIONOS_SCHEME ?? nativeProject().scheme,
+      configuration: process.env.VISIONOS_CONFIGURATION ?? defaultTarget().configuration,
+      destination: process.env.VISIONOS_DESTINATION ?? defaultTarget().destination,
+      sdk: process.env.VISIONOS_SDK ?? defaultTarget().sdk
     },
     audit: {
       requestId,
@@ -184,6 +205,45 @@ function normalizeJobKind(value) {
     return value;
   }
   throw new Error(`Unsupported VISIONOS_MAC_BUILDER_JOB_KIND: ${value}`);
+}
+
+function printNativeProjectSummary() {
+  const project = nativeProject();
+  console.log("Native project:");
+  console.log(`  sourceRoot: ${project.sourceRoot}`);
+  console.log(`  generator: ${project.generator}`);
+  console.log(`  generatorSpecPath: ${project.generatorSpecPath}`);
+  console.log(`  projectPath: ${project.projectPath}`);
+  console.log(`  scheme: ${project.scheme}`);
+}
+
+function createMacBuildProject() {
+  const project = nativeProject();
+  return {
+    sourceRoot: process.env.VISIONOS_SOURCE_ROOT ?? project.sourceRoot,
+    projectPath: process.env.VISIONOS_PROJECT_PATH ?? project.projectPath,
+    scheme: process.env.VISIONOS_SCHEME ?? project.scheme,
+    generator: process.env.VISIONOS_PROJECT_GENERATOR ?? project.generator,
+    generatorSpecPath: process.env.VISIONOS_PROJECT_SPEC_PATH ?? project.generatorSpecPath
+  };
+}
+
+function nativeProject() {
+  return workflow.nativeProject ?? {
+    sourceRoot: "native/visionos",
+    generator: "xcodegen",
+    generatorSpecPath: "native/visionos/project.yml",
+    projectPath: "native/visionos/VisionWebWorkspace.xcodeproj",
+    scheme: "VisionWebWorkspace"
+  };
+}
+
+function defaultTarget() {
+  return workflow.defaultTarget ?? {
+    configuration: "Debug",
+    destination: "platform=visionOS Simulator,name=Apple Vision Pro",
+    sdk: "xrsimulator"
+  };
 }
 
 function createRepoRef() {
@@ -305,6 +365,7 @@ function printHelp() {
   console.log("");
   console.log("Commands:");
   console.log("  plan             Print the staged visionOS workflow.");
+  console.log("  native-plan      Print the native project and Mac Builder command plan.");
   console.log("  preflight        Run local tool and compliance checks.");
   console.log("  mac-build-check  Check native visionOS build capability boundary.");
 }

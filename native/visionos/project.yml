@@ -1,0 +1,27 @@
+name: VisionWebWorkspace
+
+options:
+  bundleIdPrefix: com.jishengyang
+  deploymentTarget:
+    visionOS: "1.0"
+
+settings:
+  base:
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    SWIFT_VERSION: "5.9"
+
+targets:
+  VisionWebWorkspace:
+    type: application
+    platform: visionOS
+    deploymentTarget: "1.0"
+    sources:
+      - path: VisionWebWorkspace
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jishengyang.visionwebworkspace
+        PRODUCT_NAME: VisionWebWorkspace
+        INFOPLIST_FILE: VisionWebWorkspace/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "7"

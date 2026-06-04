@@ -144,7 +144,7 @@
       "mode": "optional-mac-builder",
       "githubUrl": "https://github.com/yonaskolb/XcodeGen",
       "command": "xcodegen",
-      "workflow": ["future-xcode-project-generation"]
+      "workflow": ["native-project-generation", "future-xcode-project-generation"]
     },
     {
       "id": "tuist",

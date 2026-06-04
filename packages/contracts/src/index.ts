@@ -153,9 +153,21 @@ export interface MacBuildTarget {
   sdk: "xros" | "xrsimulator";
 }
 
+export type MacProjectGenerator = "xcodegen" | "xcodeproj" | "tuist";
+
+export interface MacBuildProject {
+  sourceRoot: string;
+  projectPath: string;
+  scheme: string;
+  generator: MacProjectGenerator;
+  generatorSpecPath?: string;
+  workspacePath?: string;
+}
+
 export interface MacBuildRequestBase {
   kind: MacBuildJobKind;
   repoRef: RepoRef;
+  project: MacBuildProject;
   target: MacBuildTarget;
   audit: MacBuilderAudit;
   capabilities: WorkflowCapability[];

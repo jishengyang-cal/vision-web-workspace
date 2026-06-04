@@ -182,6 +182,7 @@ Request lifecycle:
 
 1. Agent creates `MacBuildRequest` with:
    - `repoRef`,
+   - `project`,
    - `target`,
    - `audit`,
    - approval decision,
@@ -198,7 +199,10 @@ Request lifecycle:
 Build:
 
 ```bash
+xcodegen generate --spec "$GENERATOR_SPEC_PATH"
+
 xcodebuild \
+  -project "$PROJECT_PATH" \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
   -destination "$DESTINATION" \
@@ -210,6 +214,7 @@ Simulator test:
 
 ```bash
 xcodebuild \
+  -project "$PROJECT_PATH" \
   -scheme "$SCHEME" \
   -destination "$DESTINATION" \
   -resultBundlePath "$RESULT_BUNDLE_PATH" \
@@ -220,6 +225,7 @@ Archive:
 
 ```bash
 xcodebuild \
+  -project "$PROJECT_PATH" \
   -scheme "$SCHEME" \
   -configuration Release \
   -archivePath "$ARCHIVE_PATH" \

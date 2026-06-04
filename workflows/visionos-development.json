@@ -2,6 +2,18 @@
   "version": 1,
   "name": "visionos-development",
   "hardBoundary": "Native visionOS build, signing, official simulator, device install, TestFlight, and App Store submission require macOS, Xcode, the visionOS SDK, and Apple-controlled credentials.",
+  "nativeProject": {
+    "sourceRoot": "native/visionos",
+    "generator": "xcodegen",
+    "generatorSpecPath": "native/visionos/project.yml",
+    "projectPath": "native/visionos/VisionWebWorkspace.xcodeproj",
+    "scheme": "VisionWebWorkspace"
+  },
+  "defaultTarget": {
+    "configuration": "Debug",
+    "destination": "platform=visionOS Simulator,name=Apple Vision Pro",
+    "sdk": "xrsimulator"
+  },
   "phases": [
     {
       "id": "preflight",
@@ -77,7 +89,7 @@
       "id": "native-project-generation",
       "title": "Native Xcode project generation",
       "capabilities": ["mac-builder-required", "mcp-candidate"],
-      "command": null,
+      "command": "pnpm visionos:native:plan",
       "produces": ["Xcode project state", "generated native source"]
     },
     {

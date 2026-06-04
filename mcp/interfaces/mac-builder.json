@@ -31,22 +31,22 @@
     },
     {
       "id": "visionos.generateProject",
-      "input": ["repoRef", "generator"],
+      "input": ["repoRef", "project", "generator"],
       "output": ["changedFiles", "logs"]
     },
     {
       "id": "visionos.build",
-      "input": ["repoRef", "scheme", "configuration", "destination"],
+      "input": ["repoRef", "project", "scheme", "configuration", "destination"],
       "output": ["buildStatus", "logs", "xcresultRef"]
     },
     {
       "id": "visionos.testSimulator",
-      "input": ["repoRef", "scheme", "destination"],
+      "input": ["repoRef", "project", "scheme", "destination"],
       "output": ["testStatus", "logs", "screenshots", "xcresultRef"]
     },
     {
       "id": "visionos.archive",
-      "input": ["repoRef", "scheme", "exportMethod"],
+      "input": ["repoRef", "project", "scheme", "exportMethod"],
       "output": ["archiveStatus", "artifactRef", "xcresultRef"]
     }
   ],

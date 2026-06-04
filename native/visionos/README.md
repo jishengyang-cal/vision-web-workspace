@@ -1,0 +1,42 @@
+# Native visionOS Shell
+
+This directory contains the first native SwiftUI/RealityKit shell for the
+workspace. It is source and project metadata only. Linux workflow commands may
+inspect these files and create Mac Builder requests, but native project
+generation and `xcodebuild` execution must run on a Mac Builder or local Mac
+with Xcode and the visionOS SDK.
+
+## Mac Builder inputs
+
+```text
+sourceRoot: native/visionos
+generator: xcodegen
+generatorSpecPath: native/visionos/project.yml
+projectPath: native/visionos/VisionWebWorkspace.xcodeproj
+scheme: VisionWebWorkspace
+configuration: Debug
+destination: platform=visionOS Simulator,name=Apple Vision Pro
+sdk: xrsimulator
+```
+
+## Native execution commands
+
+These commands are documented for the Mac Builder worker. They are not Linux
+workflow commands.
+
+```bash
+xcodegen generate --spec native/visionos/project.yml
+
+xcodebuild \
+  -project native/visionos/VisionWebWorkspace.xcodeproj \
+  -scheme VisionWebWorkspace \
+  -configuration Debug \
+  -destination "platform=visionOS Simulator,name=Apple Vision Pro" \
+  -sdk xrsimulator \
+  build
+```
+
+The current app opens a mixed immersive workspace and renders a head-locked
+SwiftUI browser panel attachment. `WKWebView` is included for native webpage
+window prototyping; if attachment stability becomes a blocker on device, the
+same panel can display a remote browser stream from the gateway instead.

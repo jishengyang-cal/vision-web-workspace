@@ -38,7 +38,7 @@ pretend to run Apple's native visionOS toolchain.
 | Mac builder e2e | linux-runnable, mcp-candidate | `pnpm test:mac-builder` | Verifies build job request, polling, logs, artifacts, `.xcresult`, and failure handling. |
 | AWS EC2 Mac builder plan | mac-builder-required, mcp-candidate | documented workflow | Defines Dedicated Host, bootstrap, artifact, audit, and teardown workflow. |
 | Swift source intelligence | optional-swift-toolchain | none yet | Future SourceKit-LSP and swift-format checks when Swift exists on Linux. |
-| Native project generation | mac-builder-required | future Mac builder MCP | Generates or updates Xcode project state. |
+| Native project generation | mac-builder-required | `pnpm visionos:native:plan` | Prints the native project metadata and Mac Builder commands without executing Mac tooling locally. |
 | Native build | mac-builder-required | `pnpm visionos:mac-build:check` | Checks that native build must be delegated to Mac builder. |
 | Official simulator debug | mac-builder-required | future Mac builder MCP | Runs visionOS simulator, captures logs, screenshots, and `.xcresult`. |
 | Device test | mac-builder-required, device-required | future device lab MCP | Installs and tests on paired Apple Vision Pro. |
@@ -53,9 +53,37 @@ pretend to run Apple's native visionOS toolchain.
 4. Run `pnpm dev:gateway` and `pnpm dev:web`.
 5. Validate window behavior with `pnpm test:e2e`.
 6. Validate the Mac builder control plane with `pnpm test:mac-builder`.
-7. Run `pnpm workflow:check` before pushing.
-8. When native SwiftUI/RealityKit source exists, send build/test jobs to the
-   Mac builder MCP instead of running Xcode commands locally.
+7. Inspect native Mac Builder inputs with `pnpm visionos:native:plan`.
+8. Run `pnpm workflow:check` before pushing.
+9. Send build/test jobs to the Mac builder MCP instead of running Xcode
+   commands locally.
+
+## Native project handoff
+
+The native source root is `native/visionos`. It contains:
+
+- `project.yml`: XcodeGen spec for `VisionWebWorkspace`.
+- `VisionWebWorkspaceApp.swift`: SwiftUI app entry with mixed
+  `ImmersiveSpace`.
+- `FollowWorkspaceImmersiveView.swift`: RealityKit attachment host for the
+  workspace panel.
+- `BrowserWindowView.swift`: `WKWebView` prototype surface for webpage windows.
+
+The Mac Builder request includes this structured project block:
+
+```json
+{
+  "sourceRoot": "native/visionos",
+  "generator": "xcodegen",
+  "generatorSpecPath": "native/visionos/project.yml",
+  "projectPath": "native/visionos/VisionWebWorkspace.xcodeproj",
+  "scheme": "VisionWebWorkspace"
+}
+```
+
+The Linux workflow can print and validate that block. The Mac Builder owns
+`xcodegen generate`, `xcodebuild`, Simulator, signing, archive, and `.xcresult`
+work.
 
 ## Official Apple flow mapped to repo flow
 

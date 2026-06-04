@@ -50,6 +50,7 @@ const requiredScripts = [
   "test:mac-builder",
   "visionos:preflight",
   "visionos:workflow:plan",
+  "visionos:native:plan",
   "visionos:mac-build:check",
   "aws:mac:plan",
   "aws:mac:doctor",
@@ -73,6 +74,7 @@ const linuxRequiredScriptNames = [
   "test:mac-builder",
   "visionos:preflight",
   "visionos:workflow:plan",
+  "visionos:native:plan",
   "aws:mac:plan"
 ];
 for (const name of linuxRequiredScriptNames) {
@@ -118,6 +120,15 @@ const requiredFiles = [
   "services/mac-builder-mock/src/index.ts",
   "scripts/aws-mac-builder.mjs",
   "tests/mac-builder.e2e.mjs",
+  "native/visionos/README.md",
+  "native/visionos/project.yml",
+  "native/visionos/VisionWebWorkspace/Info.plist",
+  "native/visionos/VisionWebWorkspace/VisionWebWorkspaceApp.swift",
+  "native/visionos/VisionWebWorkspace/Models/WorkspacePanelState.swift",
+  "native/visionos/VisionWebWorkspace/Views/LauncherView.swift",
+  "native/visionos/VisionWebWorkspace/Views/FollowWorkspaceImmersiveView.swift",
+  "native/visionos/VisionWebWorkspace/Views/WorkspacePanelView.swift",
+  "native/visionos/VisionWebWorkspace/Views/BrowserWindowView.swift",
   ".githooks/pre-commit",
   ".githooks/pre-push"
 ];
@@ -128,6 +139,18 @@ for (const file of requiredFiles) {
 }
 
 const workflow = JSON.parse(readFileSync("workflows/visionos-development.json", "utf8"));
+if (workflow.nativeProject?.sourceRoot !== "native/visionos") {
+  violations.push("visionOS workflow must declare nativeProject.sourceRoot");
+}
+if (workflow.nativeProject?.generator !== "xcodegen") {
+  violations.push("visionOS workflow must declare xcodegen as the native project generator");
+}
+if (workflow.nativeProject?.projectPath !== "native/visionos/VisionWebWorkspace.xcodeproj") {
+  violations.push("visionOS workflow must declare native projectPath");
+}
+if (workflow.defaultTarget?.sdk !== "xrsimulator") {
+  violations.push("visionOS workflow default target must use xrsimulator");
+}
 const phaseIds = new Set(workflow.phases.map((phase) => phase.id));
 for (const id of ["preflight", "web-simulator", "native-build", "official-simulator-debug", "device-test", "release"]) {
   if (!phaseIds.has(id)) {
@@ -167,6 +190,40 @@ if (!/must not\s+receive direct access/.test(mcpBoundary)) {
 const macBuilderMock = readFileSync("services/mac-builder-mock/src/index.ts", "utf8");
 if (/child_process|\bspawn(Sync)?\b|\bexecFile(Sync)?\b|\bexecSync\b/.test(macBuilderMock)) {
   violations.push("mock Mac builder must not execute local native tooling");
+}
+if (!macBuilderMock.includes("request.project")) {
+  violations.push("mock Mac builder must validate structured project metadata");
+}
+
+const nativeProjectSpec = readFileSync("native/visionos/project.yml", "utf8");
+if (!nativeProjectSpec.includes("platform: visionOS")) {
+  violations.push("native XcodeGen project must target visionOS");
+}
+if (!nativeProjectSpec.includes("PRODUCT_BUNDLE_IDENTIFIER: com.jishengyang.visionwebworkspace")) {
+  violations.push("native project must declare the product bundle identifier");
+}
+if (!nativeProjectSpec.includes("VisionWebWorkspace")) {
+  violations.push("native project must declare the VisionWebWorkspace target");
+}
+
+const nativeApp = readFileSync("native/visionos/VisionWebWorkspace/VisionWebWorkspaceApp.swift", "utf8");
+if (!nativeApp.includes("ImmersiveSpace") || !nativeApp.includes(".mixed")) {
+  violations.push("native app must open a mixed ImmersiveSpace");
+}
+
+const workspaceState = readFileSync("native/visionos/VisionWebWorkspace/Models/WorkspacePanelState.swift", "utf8");
+if (!workspaceState.includes('panelAttachmentID = "workspace-panel"')) {
+  violations.push("native workspace state must define the workspace panel attachment id");
+}
+
+const immersiveView = readFileSync("native/visionos/VisionWebWorkspace/Views/FollowWorkspaceImmersiveView.swift", "utf8");
+if (!immersiveView.includes("RealityView") || !immersiveView.includes("panelAttachmentID")) {
+  violations.push("native immersive view must render the workspace panel as a RealityView attachment");
+}
+
+const browserWindow = readFileSync("native/visionos/VisionWebWorkspace/Views/BrowserWindowView.swift", "utf8");
+if (!browserWindow.includes("WKWebView")) {
+  violations.push("native browser window must include WKWebView prototype surface");
 }
 
 const macBuilderInterface = JSON.parse(readFileSync("mcp/interfaces/mac-builder.json", "utf8"));

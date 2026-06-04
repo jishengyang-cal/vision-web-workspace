@@ -103,7 +103,13 @@ function createJob(request: MacBuildRequest): StoredJob {
     status: "queued",
     request,
     logs: [
-      log(1, "info", `Accepted mock ${request.kind} job for ${request.repoRef.repository} at ${request.repoRef.commitSha}.`, now)
+      log(
+        1,
+        "info",
+        `Accepted mock ${request.kind} job for ${request.repoRef.repository} at ${request.repoRef.commitSha}.`,
+        now
+      ),
+      log(2, "info", `Project ${request.project.scheme} at ${request.project.projectPath}.`, now)
     ],
     artifacts: [],
     createdAt: now,
@@ -123,6 +129,9 @@ function validateRequest(request: MacBuildRequest) {
   }
   if (!request.repoRef?.commitSha || !request.repoRef.repository) {
     throw new Error("Mac builder request requires repoRef.repository and repoRef.commitSha");
+  }
+  if (!request.project?.sourceRoot || !request.project.projectPath || !request.project.scheme || !request.project.generator) {
+    throw new Error("Mac builder request requires project sourceRoot, projectPath, scheme, and generator");
   }
   if (!request.target?.scheme || !request.target.configuration || !request.target.destination || !request.target.sdk) {
     throw new Error("Mac builder request requires target scheme, configuration, destination, and sdk");
