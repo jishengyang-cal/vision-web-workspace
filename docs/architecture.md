@@ -31,6 +31,11 @@ Imperativ adapter
 Native visionOS shell
   -> future generated SwiftUI/RealityKit client that renders the same window
      model inside a mixed ImmersiveSpace.
+
+Workflow control plane
+  -> executable repo workflows, Agent skills, MCP capability adapters, and
+     hooks that keep Linux, Mac-builder, device, and release responsibilities
+     separate.
 ```
 
 ## Control boundary
@@ -52,3 +57,20 @@ workspace.layout.restore
 The default audit level records session lifecycle and controlled URL access. It
 does not record every terminal keystroke unless a policy explicitly enables
 that for a sensitive workspace.
+
+## Workflow boundary
+
+The project uses four layers for visionOS development process control:
+
+- Workflows are executable repo commands and machine-readable plans.
+- Skills guide agents to choose the correct workflow and stop at missing
+  capabilities.
+- MCP interfaces will expose privileged Mac builder, docs index, and device lab
+  capabilities behind approval and audit.
+- Hooks enforce local compliance before commit and push.
+
+Linux workflows may validate contracts, simulator behavior, gateway sessions,
+developer web surfaces, and static checks. Mac builder workflows own native
+Xcode project generation, build, simulator, signing, archive, and `.xcresult`
+operations. Device lab and release workflows own paired device testing,
+TestFlight, and App Store Connect work.

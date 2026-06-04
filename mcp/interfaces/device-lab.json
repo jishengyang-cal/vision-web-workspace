@@ -1,0 +1,33 @@
+{
+  "name": "visionos-device-lab",
+  "version": 1,
+  "status": "planned",
+  "boundary": "Installs and tests on Apple Vision Pro devices through an audited lab. Device pairing, logs, and credentials stay inside the lab boundary.",
+  "capabilities": [
+    {
+      "id": "device.list",
+      "input": ["pool"],
+      "output": ["devices"]
+    },
+    {
+      "id": "device.install",
+      "input": ["artifactRef", "deviceId"],
+      "output": ["installStatus", "logs"]
+    },
+    {
+      "id": "device.captureLogs",
+      "input": ["deviceId", "sessionId"],
+      "output": ["logRef", "summary"]
+    },
+    {
+      "id": "device.captureScreenshot",
+      "input": ["deviceId", "sessionId"],
+      "output": ["imageRef", "metadata"]
+    },
+    {
+      "id": "device.recordTest",
+      "input": ["deviceId", "testPlan", "artifactRef"],
+      "output": ["testStatus", "evidenceRefs"]
+    }
+  ]
+}

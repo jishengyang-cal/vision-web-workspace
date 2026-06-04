@@ -1,0 +1,19 @@
+{
+  "name": "visionos-docs-index",
+  "version": 1,
+  "status": "planned",
+  "boundary": "Provides searchable documentation references. It does not execute builds, access secrets, or mutate source.",
+  "capabilities": [
+    {
+      "id": "docs.search",
+      "input": ["query", "sourceSet"],
+      "output": ["results"]
+    },
+    {
+      "id": "docs.fetch",
+      "input": ["documentId"],
+      "output": ["title", "url", "summary", "retrievedAt"]
+    }
+  ],
+  "sourceSets": ["project-docs", "apple-developer-docs", "github-tool-docs"]
+}

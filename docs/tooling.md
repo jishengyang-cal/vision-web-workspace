@@ -17,6 +17,13 @@ Run the architecture and workflow compliance check:
 pnpm compliance:check
 ```
 
+Run the visionOS workflow preflight and workflow planner:
+
+```bash
+pnpm visionos:preflight
+pnpm visionos:workflow:plan
+```
+
 Run the full local workflow gate:
 
 ```bash
@@ -53,11 +60,19 @@ code-server: http://127.0.0.1:8080
 
 ### Mac-builder only
 
-- Xcode, xcodebuild, xcrun, XcodeGen, Tuist, XcodeProj, and real visionOS
-  simulator/device workflows.
+- Xcode, xcodebuild, xcrun, simctl, xcresulttool, Reality Composer Pro,
+  Apple Transporter, XcodeGen, Tuist, XcodeProj, and real visionOS
+  simulator/device/release workflows.
 
 These tools must not be required by `dev`, `build`, `typecheck`, or
 `workflow:check` in the Linux workflow.
+
+## Hooks and MCP
+
+- Install local hooks with `pnpm hooks:install`.
+- MCP interface contracts live in `mcp/interfaces`.
+- The current repository does not execute native Xcode builds locally. Use
+  `pnpm visionos:mac-build:check` to verify that boundary.
 
 ## Researched sources
 

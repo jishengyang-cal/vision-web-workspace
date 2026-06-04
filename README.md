@@ -34,6 +34,16 @@ services/
 
 docs/
   architecture.md      Product and system architecture notes.
+  workflows/           visionOS, MCP, and hook workflow documents.
+
+skills/
+  visionos-dev/        Agent skill source for this repository.
+
+mcp/
+  interfaces/          Planned MCP capability contracts.
+
+workflows/
+  visionos-development.json
 ```
 
 ## Quick start
@@ -104,6 +114,8 @@ BROWSER_URL=https://example.com
 ```bash
 pnpm tools:doctor
 pnpm compliance:check
+pnpm visionos:preflight
+pnpm visionos:workflow:plan
 pnpm workflow:check
 ```
 
@@ -111,6 +123,12 @@ Start local developer surfaces for Terminal and Code windows:
 
 ```bash
 LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) pnpm dev:services
+```
+
+Install local git hooks:
+
+```bash
+pnpm hooks:install
 ```
 
 ## Next build targets

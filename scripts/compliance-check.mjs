@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 const violations = [];
@@ -11,7 +11,11 @@ const trackedForbidden = [
   /(^|\/)node_modules\//,
   /(^|\/)dist\//,
   /(^|\/)\.run\//,
+  /(^|\/)(playwright-report|test-results)\//,
   /\.tsbuildinfo$/,
+  /\.xcresult($|\/)/,
+  /\.xcarchive($|\/)/,
+  /\.(p12|cer|mobileprovision|provisionprofile)$/,
   /^\.env$/,
   /^\.env\./,
   /PRIVATE KEY/
@@ -37,14 +41,32 @@ for (const { file, content } of trackedText) {
 }
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
-const requiredScripts = ["tools:doctor", "compliance:check", "workflow:check", "dev:services", "test:e2e"];
+const requiredScripts = [
+  "tools:doctor",
+  "compliance:check",
+  "workflow:check",
+  "dev:services",
+  "test:e2e",
+  "visionos:preflight",
+  "visionos:workflow:plan",
+  "visionos:mac-build:check",
+  "hooks:install"
+];
 for (const script of requiredScripts) {
   if (!packageJson.scripts?.[script]) {
     violations.push(`missing package script: ${script}`);
   }
 }
 
-const linuxRequiredScriptNames = ["dev", "build", "typecheck", "workflow:check", "test:e2e"];
+const linuxRequiredScriptNames = [
+  "dev",
+  "build",
+  "typecheck",
+  "workflow:check",
+  "test:e2e",
+  "visionos:preflight",
+  "visionos:workflow:plan"
+];
 for (const name of linuxRequiredScriptNames) {
   const script = packageJson.scripts?.[name] ?? "";
   if (/\b(xcodebuild|xcrun|tuist|xcodegen)\b/.test(script)) {
@@ -53,7 +75,7 @@ for (const name of linuxRequiredScriptNames) {
 }
 
 const catalog = JSON.parse(readFileSync("tools/tool-catalog.json", "utf8"));
-for (const id of ["xcodebuild", "xcrun"]) {
+for (const id of ["xcode", "xcodebuild", "xcrun", "xcrun-simctl", "xcresulttool"]) {
   const entry = catalog.tools.find((tool) => tool.id === id);
   if (!entry || entry.mode !== "mac-only") {
     violations.push(`${id} must be cataloged as mac-only`);
@@ -68,6 +90,61 @@ if (!readme.includes("Without macOS, Xcode, and the visionOS SDK")) {
 const architecture = readFileSync("docs/architecture.md", "utf8");
 if (!architecture.includes("does not give the Vision Pro client direct access")) {
   violations.push("architecture must preserve Vision Pro client authority boundary");
+}
+
+const requiredFiles = [
+  "docs/workflows/visionos-development.md",
+  "docs/workflows/mcp-and-hooks.md",
+  "workflows/visionos-development.json",
+  "skills/visionos-dev/SKILL.md",
+  "skills/visionos-dev/references/boundaries.md",
+  "skills/visionos-dev/agents/openai.yaml",
+  "mcp/interfaces/mac-builder.json",
+  "mcp/interfaces/docs-index.json",
+  "mcp/interfaces/device-lab.json",
+  ".githooks/pre-commit",
+  ".githooks/pre-push"
+];
+for (const file of requiredFiles) {
+  if (!existsSync(file)) {
+    violations.push(`missing required workflow file: ${file}`);
+  }
+}
+
+const workflow = JSON.parse(readFileSync("workflows/visionos-development.json", "utf8"));
+const phaseIds = new Set(workflow.phases.map((phase) => phase.id));
+for (const id of ["preflight", "web-simulator", "native-build", "official-simulator-debug", "device-test", "release"]) {
+  if (!phaseIds.has(id)) {
+    violations.push(`visionOS workflow is missing phase: ${id}`);
+  }
+}
+for (const phase of workflow.phases) {
+  if (
+    ["native-build", "official-simulator-debug", "device-test", "release"].includes(phase.id) &&
+    !phase.capabilities.includes("mac-builder-required")
+  ) {
+    violations.push(`visionOS phase ${phase.id} must require mac-builder`);
+  }
+}
+
+const skill = readFileSync("skills/visionos-dev/SKILL.md", "utf8");
+if (!skill.includes("Do not claim native visionOS compile")) {
+  violations.push("visionos-dev skill must preserve native toolchain boundary");
+}
+
+const mcpBoundary = readFileSync("docs/workflows/mcp-and-hooks.md", "utf8");
+if (!/must not\s+receive direct access/.test(mcpBoundary)) {
+  violations.push("MCP boundary doc must preserve no-direct-secret-access rule");
+}
+
+const preCommit = readFileSync(".githooks/pre-commit", "utf8");
+if (!preCommit.includes("pnpm compliance:check")) {
+  violations.push("pre-commit hook must run compliance check");
+}
+
+const prePush = readFileSync(".githooks/pre-push", "utf8");
+if (!prePush.includes("pnpm workflow:check")) {
+  violations.push("pre-push hook must run workflow check");
 }
 
 const compose = readFileSync("docker-compose.dev.yml", "utf8");

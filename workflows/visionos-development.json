@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "name": "visionos-development",
+  "hardBoundary": "Native visionOS build, signing, official simulator, device install, TestFlight, and App Store submission require macOS, Xcode, the visionOS SDK, and Apple-controlled credentials.",
+  "phases": [
+    {
+      "id": "preflight",
+      "title": "Tool and boundary preflight",
+      "capabilities": ["linux-runnable"],
+      "command": "pnpm visionos:preflight",
+      "produces": ["local tool status", "workflow compliance status"]
+    },
+    {
+      "id": "web-simulator",
+      "title": "Spatial web workspace simulator",
+      "capabilities": ["linux-runnable"],
+      "command": "pnpm dev:web",
+      "produces": ["movable web windows", "layout behavior", "session URL behavior"]
+    },
+    {
+      "id": "gateway",
+      "title": "Controlled session gateway",
+      "capabilities": ["linux-runnable"],
+      "command": "pnpm dev:gateway",
+      "produces": ["terminal session descriptors", "code session descriptors", "audit lifecycle events"]
+    },
+    {
+      "id": "developer-surfaces",
+      "title": "Browser developer surfaces",
+      "capabilities": ["linux-runnable"],
+      "command": "pnpm dev:services",
+      "produces": ["ttyd terminal", "code-server IDE"]
+    },
+    {
+      "id": "local-gate",
+      "title": "Local workflow gate",
+      "capabilities": ["linux-runnable"],
+      "command": "pnpm workflow:check",
+      "produces": ["tool doctor", "compliance result", "typecheck", "build"]
+    },
+    {
+      "id": "web-e2e",
+      "title": "Browser workspace e2e",
+      "capabilities": ["linux-runnable"],
+      "command": "pnpm test:e2e",
+      "produces": ["Playwright smoke result"]
+    },
+    {
+      "id": "swift-source-intelligence",
+      "title": "Swift source intelligence",
+      "capabilities": ["optional-swift-toolchain"],
+      "command": null,
+      "produces": ["SourceKit-LSP diagnostics", "swift-format results"]
+    },
+    {
+      "id": "native-project-generation",
+      "title": "Native Xcode project generation",
+      "capabilities": ["mac-builder-required", "mcp-candidate"],
+      "command": null,
+      "produces": ["Xcode project state", "generated native source"]
+    },
+    {
+      "id": "native-build",
+      "title": "Native visionOS build",
+      "capabilities": ["mac-builder-required", "mcp-candidate"],
+      "command": "pnpm visionos:mac-build:check",
+      "produces": ["xcodebuild logs", "build products", "xcresult bundle"]
+    },
+    {
+      "id": "official-simulator-debug",
+      "title": "Official simulator debug",
+      "capabilities": ["mac-builder-required", "mcp-candidate"],
+      "command": null,
+      "produces": ["simulator logs", "screenshots", "debug diagnostics"]
+    },
+    {
+      "id": "device-test",
+      "title": "Apple Vision Pro device test",
+      "capabilities": ["mac-builder-required", "device-required", "mcp-candidate"],
+      "command": null,
+      "produces": ["device install result", "device logs", "manual or automated test record"]
+    },
+    {
+      "id": "release",
+      "title": "TestFlight and App Store release",
+      "capabilities": ["mac-builder-required", "apple-account-required", "mcp-candidate"],
+      "command": null,
+      "produces": ["signed archive", "exported IPA", "upload result"]
+    }
+  ]
+}

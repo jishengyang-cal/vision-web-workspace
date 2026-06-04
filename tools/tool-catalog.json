@@ -107,6 +107,13 @@
       "workflow": ["future-xcode-project-generation"]
     },
     {
+      "id": "xcode",
+      "name": "Xcode",
+      "mode": "mac-only",
+      "command": "xcodebuild",
+      "workflow": ["future-native-build", "future-official-simulator", "future-device-debug"]
+    },
+    {
       "id": "xcodebuild",
       "name": "xcodebuild",
       "mode": "mac-only",
@@ -119,6 +126,50 @@
       "mode": "mac-only",
       "command": "xcrun",
       "workflow": ["future-mac-builder-only"]
+    },
+    {
+      "id": "xcrun-simctl",
+      "name": "xcrun simctl",
+      "mode": "mac-only",
+      "command": "xcrun",
+      "workflow": ["future-official-simulator"]
+    },
+    {
+      "id": "xcresulttool",
+      "name": "xcresulttool",
+      "mode": "mac-only",
+      "command": "xcrun",
+      "workflow": ["future-build-result-export"]
+    },
+    {
+      "id": "reality-composer-pro",
+      "name": "Reality Composer Pro",
+      "mode": "mac-only",
+      "workflow": ["future-spatial-asset-authoring"]
+    },
+    {
+      "id": "apple-transporter",
+      "name": "Apple Transporter",
+      "mode": "mac-only",
+      "workflow": ["future-app-store-upload"]
+    },
+    {
+      "id": "xcode-cloud",
+      "name": "Xcode Cloud",
+      "mode": "apple-service",
+      "workflow": ["future-managed-apple-builds"]
+    },
+    {
+      "id": "apple-developer-account",
+      "name": "Apple Developer Program account",
+      "mode": "apple-account-required",
+      "workflow": ["future-signing", "future-device-registration", "future-testflight"]
+    },
+    {
+      "id": "apple-vision-pro",
+      "name": "Apple Vision Pro",
+      "mode": "device-required",
+      "workflow": ["future-device-test"]
     }
   ]
 }

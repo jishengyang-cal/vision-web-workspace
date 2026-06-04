@@ -1,0 +1,37 @@
+{
+  "name": "visionos-mac-builder",
+  "version": 1,
+  "status": "planned",
+  "boundary": "Runs native Xcode and visionOS SDK operations on an audited Mac host. The browser simulator and Vision Pro client never receive signing assets or deployment authority.",
+  "capabilities": [
+    {
+      "id": "visionos.preflight",
+      "input": ["repoRef", "xcodeVersion"],
+      "output": ["hostStatus", "sdkStatus", "signingStatus"]
+    },
+    {
+      "id": "visionos.generateProject",
+      "input": ["repoRef", "generator"],
+      "output": ["changedFiles", "logs"]
+    },
+    {
+      "id": "visionos.build",
+      "input": ["repoRef", "scheme", "configuration", "destination"],
+      "output": ["buildStatus", "logs", "xcresultRef"]
+    },
+    {
+      "id": "visionos.testSimulator",
+      "input": ["repoRef", "scheme", "destination"],
+      "output": ["testStatus", "logs", "screenshots", "xcresultRef"]
+    },
+    {
+      "id": "visionos.archive",
+      "input": ["repoRef", "scheme", "exportMethod"],
+      "output": ["archiveStatus", "artifactRef", "xcresultRef"]
+    }
+  ],
+  "secrets": {
+    "allowedInsideAdapter": ["signing identities", "provisioning profiles", "App Store Connect credentials"],
+    "forbiddenToClient": ["private keys", "tokens", "certificates", "profiles", "deployment credentials"]
+  }
+}

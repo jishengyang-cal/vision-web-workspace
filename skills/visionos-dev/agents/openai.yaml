@@ -1,0 +1,7 @@
+interface:
+  display_name: "visionOS Dev Workflow"
+  short_description: "Guide visionOS workflow, Mac-builder, and compliance"
+  default_prompt: "Use $visionos-dev to plan and validate a visionOS workflow change in this repository."
+
+policy:
+  allow_implicit_invocation: true
