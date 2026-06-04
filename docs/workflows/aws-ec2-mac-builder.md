@@ -62,6 +62,18 @@ pnpm aws:mac:deploy-baseline
 and IAM instance profile resources. It does not allocate an EC2 Mac Dedicated
 Host or run an EC2 Mac instance.
 
+The real worker launch flow is intentionally separated:
+
+```bash
+pnpm aws:mac:worker:plan
+pnpm aws:mac:worker:price-check
+pnpm aws:mac:worker:status
+AWS_MAC_WORKER_CONFIRM=allocate-24h-mac-host pnpm aws:mac:worker:launch
+```
+
+The launch command allocates one Dedicated Host and starts one Mac instance
+only after the pricing estimate and monthly budget guard pass.
+
 ### Accounts and IAM
 
 - Dedicated AWS account or isolated workload account for Mac builder.
@@ -157,6 +169,25 @@ brew install git git-lfs jq node pnpm
    to archive/sign. Build-only hosts should not receive distribution signing
    assets.
 
+Repository bootstrap script:
+
+```bash
+scripts/mac-builder-bootstrap.sh
+```
+
+Full Xcode is installed only from an Apple-provided `Xcode.xip` that you place
+on the host or in the private artifact bucket:
+
+```bash
+XCODE_XIP_PATH=/path/to/Xcode.xip scripts/mac-builder-install-xcode.sh
+# or
+XCODE_S3_URI=s3://<artifact-bucket>/toolchains/Xcode.xip scripts/mac-builder-install-xcode.sh
+```
+
+The native agent package is `@vision-web-workspace/mac-builder-agent`. It
+exposes the same `/health`, `/jobs`, and `/jobs/:id` contract as the mock
+service, but refuses Xcode execution unless it is running on macOS.
+
 ## Builder API workflow
 
 The existing local mock protocol is the base contract.
@@ -171,6 +202,7 @@ AWS production adapter:
 
 ```bash
 VISIONOS_MAC_BUILDER_URL=https://mac-builder.internal.example.com \
+VISIONOS_MAC_BUILDER_TOKEN="$MAC_BUILDER_CLIENT_TOKEN" \
 VISIONOS_SCHEME=VisionWebWorkspace \
 VISIONOS_CONFIGURATION=Debug \
 VISIONOS_DESTINATION="platform=visionOS Simulator,name=Apple Vision Pro" \

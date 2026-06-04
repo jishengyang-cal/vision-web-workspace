@@ -32,6 +32,7 @@ packages/
 services/
   gateway/             Minimal session gateway skeleton.
   mac-builder-mock/    Mock Mac builder control-plane service.
+  mac-builder-agent/   Native macOS worker for XcodeGen and xcodebuild.
 
 native/
   visionos/            SwiftUI/RealityKit app shell and XcodeGen spec.
@@ -114,6 +115,7 @@ BROWSER_URL=https://example.com
 - Docker-backed local terminal and code-server services.
 - Native visionOS SwiftUI/RealityKit source skeleton and XcodeGen project spec.
 - Structured Mac Builder request metadata for the native project path.
+- Native Mac Builder Agent package for the real macOS execution plane.
 
 ## Workflow checks
 
@@ -138,6 +140,13 @@ Start the mock Mac builder and send a build job through the adapter:
 ```bash
 pnpm dev:mac-builder:mock
 VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check
+```
+
+On a real Mac Builder host, bootstrap the native agent:
+
+```bash
+scripts/mac-builder-bootstrap.sh
+VISIONOS_MAC_BUILDER_URL=http://<mac-builder-host>:3201 pnpm visionos:mac-build:check
 ```
 
 For a real remote Mac execution plane, use the AWS EC2 Mac builder workflow in

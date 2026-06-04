@@ -283,16 +283,26 @@ function git(args) {
 }
 
 async function postJson(url, payload) {
+  const headers = { "content-type": "application/json" };
+  if (process.env.VISIONOS_MAC_BUILDER_TOKEN) {
+    headers.authorization = `Bearer ${process.env.VISIONOS_MAC_BUILDER_TOKEN}`;
+  }
+
   const response = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify(payload)
   });
   return parseJsonResponse(response, url);
 }
 
 async function getJson(url) {
-  const response = await fetch(url);
+  const headers = {};
+  if (process.env.VISIONOS_MAC_BUILDER_TOKEN) {
+    headers.authorization = `Bearer ${process.env.VISIONOS_MAC_BUILDER_TOKEN}`;
+  }
+
+  const response = await fetch(url, { headers });
   return parseJsonResponse(response, url);
 }
 

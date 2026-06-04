@@ -53,6 +53,8 @@ code-server: http://127.0.0.1:8080
 - Playwright for web simulator smoke tests and later visual regression.
 - glTF Validator for future 3D asset checks.
 - Mock Mac Builder for Linux-side build adapter lifecycle tests.
+- Native Mac Builder Agent for macOS-side `xcodegen` and `xcodebuild`
+  execution.
 - ttyd through Docker for a browser terminal window.
 - code-server through Docker for a browser IDE window.
 - Native visionOS source inspection and Mac Builder request planning.
@@ -89,6 +91,8 @@ pnpm aws:mac:doctor
 pnpm aws:mac:ensure-budget
 pnpm aws:mac:cost-check
 pnpm aws:mac:deploy-baseline
+pnpm aws:mac:worker:plan
+pnpm aws:mac:worker:price-check
 ```
 
 ### Release and upload tools
@@ -110,6 +114,11 @@ Release workflow: `docs/workflows/app-store-release.md`.
 - Run the local mock builder with `pnpm dev:mac-builder:mock`.
 - Point the adapter client at it with
   `VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check`.
+- On a real Mac Builder host, run `scripts/mac-builder-bootstrap.sh` and expose
+  the agent only through a private network or SSM tunnel.
+- Install full Xcode from an explicitly provided `Xcode.xip` with
+  `scripts/mac-builder-install-xcode.sh`; Apple account credentials do not go
+  through this repository.
 - The current repository does not execute native Xcode builds locally without
   a verified builder URL. Use `pnpm visionos:mac-build:check` to verify that
   boundary.

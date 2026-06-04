@@ -1,6 +1,6 @@
 {
   "profile": "vision-mac-builder",
-  "region": "us-east-1",
+  "region": "us-east-2",
   "environment": "dev",
   "monthlyBudgetLimitUsd": 100,
   "budgetName": "vision-web-workspace-mac-builder-dev-100-usd",

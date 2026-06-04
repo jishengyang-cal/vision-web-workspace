@@ -52,11 +52,17 @@ const requiredScripts = [
   "visionos:workflow:plan",
   "visionos:native:plan",
   "visionos:mac-build:check",
+  "dev:mac-builder:agent",
+  "serve:mac-builder:agent",
   "aws:mac:plan",
   "aws:mac:doctor",
   "aws:mac:cost-check",
   "aws:mac:ensure-budget",
   "aws:mac:deploy-baseline",
+  "aws:mac:worker:plan",
+  "aws:mac:worker:status",
+  "aws:mac:worker:price-check",
+  "aws:mac:worker:launch",
   "hooks:install"
 ];
 for (const script of requiredScripts) {
@@ -118,7 +124,13 @@ const requiredFiles = [
   "mcp/interfaces/docs-index.json",
   "mcp/interfaces/device-lab.json",
   "services/mac-builder-mock/src/index.ts",
+  "services/mac-builder-agent/package.json",
+  "services/mac-builder-agent/tsconfig.json",
+  "services/mac-builder-agent/src/index.ts",
+  "scripts/mac-builder-bootstrap.sh",
+  "scripts/mac-builder-install-xcode.sh",
   "scripts/aws-mac-builder.mjs",
+  "scripts/aws-mac-worker.mjs",
   "tests/mac-builder.e2e.mjs",
   "native/visionos/README.md",
   "native/visionos/project.yml",
@@ -195,6 +207,30 @@ if (!macBuilderMock.includes("request.project")) {
   violations.push("mock Mac builder must validate structured project metadata");
 }
 
+const macBuilderAgent = readFileSync("services/mac-builder-agent/src/index.ts", "utf8");
+if (!macBuilderAgent.includes('process.platform !== "darwin"')) {
+  violations.push("native Mac builder agent must refuse Xcode execution off macOS");
+}
+if (!macBuilderAgent.includes('"xcodegen"') || !macBuilderAgent.includes('"xcodebuild"')) {
+  violations.push("native Mac builder agent must execute XcodeGen and xcodebuild only inside the agent");
+}
+if (!macBuilderAgent.includes("MAC_BUILDER_TOKEN")) {
+  violations.push("native Mac builder agent must support token-gated access");
+}
+
+const macBuilderBootstrap = readFileSync("scripts/mac-builder-bootstrap.sh", "utf8");
+if (!macBuilderBootstrap.includes("mac-builder-bootstrap must run on macOS")) {
+  violations.push("Mac builder bootstrap must refuse non-macOS execution");
+}
+
+const macBuilderInstallXcode = readFileSync("scripts/mac-builder-install-xcode.sh", "utf8");
+if (!macBuilderInstallXcode.includes("XCODE_XIP_PATH") || !macBuilderInstallXcode.includes("XCODE_S3_URI")) {
+  violations.push("Xcode installer must require an explicit Xcode.xip path or S3 URI");
+}
+if (/APPLE_ID|APP_STORE_PASSWORD|FASTLANE_SESSION/.test(macBuilderInstallXcode)) {
+  violations.push("Xcode installer must not embed Apple account credential flow");
+}
+
 const nativeProjectSpec = readFileSync("native/visionos/project.yml", "utf8");
 if (!nativeProjectSpec.includes("platform: visionOS")) {
   violations.push("native XcodeGen project must target visionOS");
@@ -258,6 +294,17 @@ if (/AWS::EC2::Host|AWS::EC2::Instance|allocate-hosts|run-instances|mac[0-9a-z.-
 const awsScript = readFileSync("scripts/aws-mac-builder.mjs", "utf8");
 if (/\[\s*["']ec2["']\s*,\s*["'](?:allocate-hosts|run-instances)["']/.test(awsScript)) {
   violations.push("AWS Mac Builder script must not allocate hosts or run instances in baseline phase");
+}
+
+const awsWorkerScript = readFileSync("scripts/aws-mac-worker.mjs", "utf8");
+if (!awsWorkerScript.includes("AWS_MAC_WORKER_CONFIRM") || !awsWorkerScript.includes("allocate-24h-mac-host")) {
+  violations.push("AWS Mac Worker launch script must require explicit 24h allocation confirmation");
+}
+if (!awsWorkerScript.includes("getHourlyPriceUsd") || !awsWorkerScript.includes("assertCostAllowed")) {
+  violations.push("AWS Mac Worker launch script must enforce price and cost guards");
+}
+if (!awsWorkerScript.includes("allocate-hosts") || !awsWorkerScript.includes("run-instances")) {
+  violations.push("AWS Mac Worker launch script must own EC2 Mac allocation and launch actions");
 }
 
 const releaseWorkflow = readFileSync("docs/workflows/app-store-release.md", "utf8");

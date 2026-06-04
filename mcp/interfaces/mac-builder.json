@@ -13,6 +13,14 @@
       "GET /jobs/:id"
     ]
   },
+  "nativeAgent": {
+    "package": "@vision-web-workspace/mac-builder-agent",
+    "bootstrapScript": "scripts/mac-builder-bootstrap.sh",
+    "defaultUrl": "http://127.0.0.1:3201",
+    "requiresPlatform": "macOS",
+    "accessTokenEnv": "MAC_BUILDER_TOKEN",
+    "clientTokenEnv": "VISIONOS_MAC_BUILDER_TOKEN"
+  },
   "awsEc2MacDeployment": {
     "workflowDocument": "docs/workflows/aws-ec2-mac-builder.md",
     "hostModel": "EC2 Mac Dedicated Host",

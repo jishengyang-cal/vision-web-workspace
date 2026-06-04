@@ -82,6 +82,13 @@
       "workflow": ["mock-native-build-control-plane", "mac-builder-e2e"]
     },
     {
+      "id": "mac-builder-agent",
+      "name": "Native Mac Builder Agent",
+      "mode": "mac-builder-required",
+      "command": "node",
+      "workflow": ["native-build", "official-simulator-debug", "archive"]
+    },
+    {
       "id": "aws-cli",
       "name": "AWS CLI",
       "mode": "optional-cloud-toolchain",
