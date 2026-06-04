@@ -22,6 +22,7 @@ Run the visionOS workflow preflight and workflow planner:
 ```bash
 pnpm visionos:preflight
 pnpm visionos:workflow:plan
+pnpm test:mac-builder
 ```
 
 Run the full local workflow gate:
@@ -50,6 +51,7 @@ code-server: http://127.0.0.1:8080
 - Node.js, pnpm, Git, Docker, Docker Compose.
 - Playwright for web simulator smoke tests and later visual regression.
 - glTF Validator for future 3D asset checks.
+- Mock Mac Builder for Linux-side build adapter lifecycle tests.
 - ttyd through Docker for a browser terminal window.
 - code-server through Docker for a browser IDE window.
 
@@ -71,8 +73,12 @@ These tools must not be required by `dev`, `build`, `typecheck`, or
 
 - Install local hooks with `pnpm hooks:install`.
 - MCP interface contracts live in `mcp/interfaces`.
-- The current repository does not execute native Xcode builds locally. Use
-  `pnpm visionos:mac-build:check` to verify that boundary.
+- Run the local mock builder with `pnpm dev:mac-builder:mock`.
+- Point the adapter client at it with
+  `VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check`.
+- The current repository does not execute native Xcode builds locally without
+  a verified builder URL. Use `pnpm visionos:mac-build:check` to verify that
+  boundary.
 
 ## Researched sources
 

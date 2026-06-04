@@ -31,6 +31,7 @@ packages/
 
 services/
   gateway/             Minimal session gateway skeleton.
+  mac-builder-mock/    Mock Mac builder control-plane service.
 
 docs/
   architecture.md      Product and system architecture notes.
@@ -117,12 +118,20 @@ pnpm compliance:check
 pnpm visionos:preflight
 pnpm visionos:workflow:plan
 pnpm workflow:check
+pnpm test:mac-builder
 ```
 
 Start local developer surfaces for Terminal and Code windows:
 
 ```bash
 LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) pnpm dev:services
+```
+
+Start the mock Mac builder and send a build job through the adapter:
+
+```bash
+pnpm dev:mac-builder:mock
+VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check
 ```
 
 Install local git hooks:

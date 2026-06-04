@@ -67,6 +67,16 @@ importers:
         specifier: ^4.22.4
         version: 4.22.4
 
+  services/mac-builder-mock:
+    dependencies:
+      '@vision-web-workspace/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
+
 packages:
 
   '@emnapi/core@1.10.0':

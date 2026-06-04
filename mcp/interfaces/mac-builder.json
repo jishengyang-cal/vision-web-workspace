@@ -1,8 +1,18 @@
 {
   "name": "visionos-mac-builder",
   "version": 1,
-  "status": "planned",
+  "status": "mock-implemented",
   "boundary": "Runs native Xcode and visionOS SDK operations on an audited Mac host. The browser simulator and Vision Pro client never receive signing assets or deployment authority.",
+  "mockServer": {
+    "command": "pnpm dev:mac-builder:mock",
+    "defaultUrl": "http://127.0.0.1:3101",
+    "endpoints": [
+      "GET /health",
+      "POST /jobs",
+      "GET /jobs",
+      "GET /jobs/:id"
+    ]
+  },
   "capabilities": [
     {
       "id": "visionos.preflight",

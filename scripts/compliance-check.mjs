@@ -47,6 +47,7 @@ const requiredScripts = [
   "workflow:check",
   "dev:services",
   "test:e2e",
+  "test:mac-builder",
   "visionos:preflight",
   "visionos:workflow:plan",
   "visionos:mac-build:check",
@@ -64,6 +65,7 @@ const linuxRequiredScriptNames = [
   "typecheck",
   "workflow:check",
   "test:e2e",
+  "test:mac-builder",
   "visionos:preflight",
   "visionos:workflow:plan"
 ];
@@ -102,6 +104,8 @@ const requiredFiles = [
   "mcp/interfaces/mac-builder.json",
   "mcp/interfaces/docs-index.json",
   "mcp/interfaces/device-lab.json",
+  "services/mac-builder-mock/src/index.ts",
+  "tests/mac-builder.e2e.mjs",
   ".githooks/pre-commit",
   ".githooks/pre-push"
 ];
@@ -116,6 +120,11 @@ const phaseIds = new Set(workflow.phases.map((phase) => phase.id));
 for (const id of ["preflight", "web-simulator", "native-build", "official-simulator-debug", "device-test", "release"]) {
   if (!phaseIds.has(id)) {
     violations.push(`visionOS workflow is missing phase: ${id}`);
+  }
+}
+for (const id of ["mock-mac-builder", "mac-builder-e2e"]) {
+  if (!phaseIds.has(id)) {
+    violations.push(`visionOS workflow is missing mock builder phase: ${id}`);
   }
 }
 for (const phase of workflow.phases) {
@@ -135,6 +144,16 @@ if (!skill.includes("Do not claim native visionOS compile")) {
 const mcpBoundary = readFileSync("docs/workflows/mcp-and-hooks.md", "utf8");
 if (!/must not\s+receive direct access/.test(mcpBoundary)) {
   violations.push("MCP boundary doc must preserve no-direct-secret-access rule");
+}
+
+const macBuilderMock = readFileSync("services/mac-builder-mock/src/index.ts", "utf8");
+if (/child_process|\bspawn(Sync)?\b|\bexecFile(Sync)?\b|\bexecSync\b/.test(macBuilderMock)) {
+  violations.push("mock Mac builder must not execute local native tooling");
+}
+
+const macBuilderInterface = JSON.parse(readFileSync("mcp/interfaces/mac-builder.json", "utf8"));
+if (macBuilderInterface.status !== "mock-implemented") {
+  violations.push("mac-builder MCP interface must record mock implementation status");
 }
 
 const preCommit = readFileSync(".githooks/pre-commit", "utf8");

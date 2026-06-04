@@ -39,11 +39,25 @@
       "produces": ["tool doctor", "compliance result", "typecheck", "build"]
     },
     {
+      "id": "mock-mac-builder",
+      "title": "Mock Mac builder adapter",
+      "capabilities": ["linux-runnable", "mcp-candidate"],
+      "command": "pnpm dev:mac-builder:mock",
+      "produces": ["mock build jobs", "mock logs", "mock artifacts", "mock xcresult references"]
+    },
+    {
       "id": "web-e2e",
       "title": "Browser workspace e2e",
       "capabilities": ["linux-runnable"],
       "command": "pnpm test:e2e",
       "produces": ["Playwright smoke result"]
+    },
+    {
+      "id": "mac-builder-e2e",
+      "title": "Mac builder control-plane e2e",
+      "capabilities": ["linux-runnable", "mcp-candidate"],
+      "command": "pnpm test:mac-builder",
+      "produces": ["job lifecycle result", "adapter client result", "artifact reference result"]
     },
     {
       "id": "swift-source-intelligence",

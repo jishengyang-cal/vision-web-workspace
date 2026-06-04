@@ -34,6 +34,8 @@ pretend to run Apple's native visionOS toolchain.
 | Developer surfaces | linux-runnable | `pnpm dev:services` | Starts ttyd and code-server loopback services for window content. |
 | Local gate | linux-runnable | `pnpm workflow:check` | Runs tool doctor, compliance check, typecheck, and build. |
 | Web e2e | linux-runnable | `pnpm test:e2e` | Verifies browser simulator and gateway smoke behavior. |
+| Mock Mac builder | linux-runnable, mcp-candidate | `pnpm dev:mac-builder:mock` | Simulates Mac builder job lifecycle without running Xcode. |
+| Mac builder e2e | linux-runnable, mcp-candidate | `pnpm test:mac-builder` | Verifies build job request, polling, logs, artifacts, `.xcresult`, and failure handling. |
 | Swift source intelligence | optional-swift-toolchain | none yet | Future SourceKit-LSP and swift-format checks when Swift exists on Linux. |
 | Native project generation | mac-builder-required | future Mac builder MCP | Generates or updates Xcode project state. |
 | Native build | mac-builder-required | `pnpm visionos:mac-build:check` | Checks that native build must be delegated to Mac builder. |
@@ -48,8 +50,9 @@ pretend to run Apple's native visionOS toolchain.
 3. Run `pnpm dev:services` when Terminal/Code windows need real local content.
 4. Run `pnpm dev:gateway` and `pnpm dev:web`.
 5. Validate window behavior with `pnpm test:e2e`.
-6. Run `pnpm workflow:check` before pushing.
-7. When native SwiftUI/RealityKit source exists, send build/test jobs to the
+6. Validate the Mac builder control plane with `pnpm test:mac-builder`.
+7. Run `pnpm workflow:check` before pushing.
+8. When native SwiftUI/RealityKit source exists, send build/test jobs to the
    Mac builder MCP instead of running Xcode commands locally.
 
 ## Official Apple flow mapped to repo flow

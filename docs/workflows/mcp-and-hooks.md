@@ -12,7 +12,8 @@ the browser simulator or Vision Pro client.
 Initial interface specs live in `mcp/interfaces`:
 
 - `mac-builder.json`: native Xcode build, simulator, archive, and `.xcresult`
-  export through a controlled Mac host.
+  export through a controlled Mac host. A local mock implementation is
+  available through `pnpm dev:mac-builder:mock`.
 - `docs-index.json`: searchable project and Apple documentation index.
 - `device-lab.json`: Apple Vision Pro install, debug capture, and test records.
 
@@ -54,7 +55,8 @@ violations before changes leave the local repo.
 When an agent or workflow reaches a macOS/Xcode-only phase:
 
 1. Run `pnpm visionos:mac-build:check`.
-2. If no Mac builder adapter exists, stop with the missing capability.
-3. If an adapter exists, send only the minimum build request and repo ref.
+2. If no Mac builder adapter URL exists, stop with the missing capability.
+3. If `VISIONOS_MAC_BUILDER_URL` exists, send only the minimum build request
+   and repo ref.
 4. Keep credentials and device authority inside the Mac builder or device lab.
 5. Return logs, summaries, and scoped artifacts to the repo workflow.

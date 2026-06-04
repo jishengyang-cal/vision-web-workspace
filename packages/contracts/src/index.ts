@@ -2,6 +2,32 @@ export type WindowKind = "terminal" | "code" | "browser" | "docs" | "logs";
 
 export type SessionKind = "terminal" | "code" | "browser" | "docs" | "logs";
 
+export type WorkflowCapability =
+  | "linux-runnable"
+  | "optional-swift-toolchain"
+  | "mac-builder-required"
+  | "apple-account-required"
+  | "device-required"
+  | "mcp-candidate";
+
+export type AuditDecisionStatus = "allowed" | "denied" | "requires-approval";
+
+export interface AuditDecision {
+  status: AuditDecisionStatus;
+  policyId: string;
+  reason: string;
+  decidedBy: string;
+  decidedAt: string;
+}
+
+export interface RepoRef {
+  provider: "github" | "local" | "other";
+  repository: string;
+  remoteUrl: string;
+  branch: string;
+  commitSha: string;
+}
+
 export interface Vec2 {
   x: number;
   y: number;
@@ -96,6 +122,106 @@ export interface CreateSessionRequest {
 
 export interface CreateSessionResponse {
   session: RemoteSessionSpec;
+}
+
+export type MacBuildJobKind = "build" | "simulator-test" | "archive";
+
+export type MacBuildJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export type MacBuildArtifactType =
+  | "build-products"
+  | "xcresult"
+  | "archive"
+  | "ipa"
+  | "log"
+  | "screenshot";
+
+export interface MacBuilderAudit {
+  requestId: string;
+  actorId: string;
+  reason: string;
+  source: "cli" | "agent" | "gateway" | "ci";
+  requestedAt: string;
+  decision: AuditDecision;
+  traceId?: string;
+}
+
+export interface MacBuildTarget {
+  scheme: string;
+  configuration: "Debug" | "Release";
+  destination: string;
+  sdk: "xros" | "xrsimulator";
+}
+
+export interface MacBuildRequestBase {
+  kind: MacBuildJobKind;
+  repoRef: RepoRef;
+  target: MacBuildTarget;
+  audit: MacBuilderAudit;
+  capabilities: WorkflowCapability[];
+  metadata?: Record<string, string>;
+}
+
+export interface MacNativeBuildRequest extends MacBuildRequestBase {
+  kind: "build";
+}
+
+export interface MacSimulatorTestRequest extends MacBuildRequestBase {
+  kind: "simulator-test";
+  testPlan?: string;
+}
+
+export interface MacArchiveRequest extends MacBuildRequestBase {
+  kind: "archive";
+  exportMethod: "development" | "ad-hoc" | "app-store";
+}
+
+export type MacBuildRequest = MacNativeBuildRequest | MacSimulatorTestRequest | MacArchiveRequest;
+
+export interface MacBuildLogEntry {
+  sequence: number;
+  level: "info" | "warn" | "error";
+  message: string;
+  createdAt: string;
+}
+
+export interface MacBuildArtifact {
+  id: string;
+  type: MacBuildArtifactType;
+  name: string;
+  uri: string;
+  createdAt: string;
+  sizeBytes?: number;
+  sha256?: string;
+  mimeType?: string;
+  retentionExpiresAt?: string;
+}
+
+export interface MacBuildJob {
+  id: string;
+  kind: MacBuildJobKind;
+  status: MacBuildJobStatus;
+  request: MacBuildRequest;
+  logs: MacBuildLogEntry[];
+  artifacts: MacBuildArtifact[];
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+  failureReason?: string;
+  xcresult?: MacBuildArtifact;
+}
+
+export interface CreateMacBuildJobResponse {
+  job: MacBuildJob;
+}
+
+export interface GetMacBuildJobResponse {
+  job: MacBuildJob;
+}
+
+export interface ListMacBuildJobsResponse {
+  jobs: MacBuildJob[];
 }
 
 export const defaultPose: WorkspacePoseSpec = {
