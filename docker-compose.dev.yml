@@ -1,0 +1,23 @@
+services:
+  ttyd:
+    image: tsl0922/ttyd:alpine
+    command: ["ttyd", "-W", "-p", "7681", "bash"]
+    working_dir: /workspace
+    ports:
+      - "127.0.0.1:7681:7681"
+    volumes:
+      - .:/workspace
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+
+  code-server:
+    image: codercom/code-server:latest
+    command:
+      - "--auth"
+      - "none"
+      - "--disable-telemetry"
+      - "/home/coder/project"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - .:/home/coder/project
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"

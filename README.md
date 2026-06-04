@@ -96,6 +96,22 @@ BROWSER_URL=https://example.com
 - Layout save and restore in local storage.
 - Shared contracts for future Imperativ and visionOS adapters.
 - Minimal gateway endpoints for controlled session creation.
+- Tool doctor and workflow compliance checks.
+- Docker-backed local terminal and code-server services.
+
+## Workflow checks
+
+```bash
+pnpm tools:doctor
+pnpm compliance:check
+pnpm workflow:check
+```
+
+Start local developer surfaces for Terminal and Code windows:
+
+```bash
+LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) pnpm dev:services
+```
 
 ## Next build targets
 

@@ -8,16 +8,24 @@
     "dev": "pnpm --filter @vision-web-workspace/web-simulator dev",
     "dev:web": "pnpm --filter @vision-web-workspace/web-simulator dev",
     "dev:gateway": "pnpm --filter @vision-web-workspace/gateway dev",
+    "dev:services": "docker compose -f docker-compose.dev.yml up ttyd code-server",
+    "dev:services:down": "docker compose -f docker-compose.dev.yml down",
     "serve:web": "node scripts/serve-web-simulator.mjs",
     "serve:gateway": "node services/gateway/dist/index.js",
     "build": "pnpm build:packages && pnpm --filter @vision-web-workspace/gateway build && pnpm --filter @vision-web-workspace/web-simulator build",
     "build:packages": "pnpm --filter @vision-web-workspace/contracts build && pnpm --filter @vision-web-workspace/window-manager build",
     "typecheck": "pnpm build:packages && pnpm -r typecheck",
+    "tools:doctor": "node scripts/tool-doctor.mjs",
+    "compliance:check": "node scripts/compliance-check.mjs",
+    "workflow:check": "pnpm run tools:doctor && pnpm run compliance:check && pnpm typecheck && pnpm build",
+    "test:e2e": "pnpm build && playwright test",
     "test": "pnpm -r test",
     "clean": "find . -name dist -type d -prune -exec rm -rf {} + && find . -name .vite -type d -prune -exec rm -rf {} +"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^24.10.1",
+    "gltf-validator": "^2.0.0-dev.3.10",
     "typescript": "^6.0.3"
   }
 }

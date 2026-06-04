@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "notes": [
+    "Native visionOS compilation still requires macOS, Xcode, and the visionOS SDK.",
+    "This catalog separates currently runnable Linux tools from optional and future Mac-builder tools."
+  ],
+  "tools": [
+    {
+      "id": "node",
+      "name": "Node.js",
+      "mode": "local-required",
+      "command": "node",
+      "workflow": ["web-simulator", "gateway", "doctor", "compliance"]
+    },
+    {
+      "id": "pnpm",
+      "name": "pnpm",
+      "mode": "local-required",
+      "command": "pnpm",
+      "workflow": ["monorepo", "typecheck", "build"]
+    },
+    {
+      "id": "git",
+      "name": "Git",
+      "mode": "local-required",
+      "command": "git",
+      "workflow": ["source-control", "compliance"]
+    },
+    {
+      "id": "docker",
+      "name": "Docker",
+      "mode": "local-required",
+      "command": "docker",
+      "workflow": ["ttyd", "code-server", "future-remote-browser"]
+    },
+    {
+      "id": "docker-compose",
+      "name": "Docker Compose",
+      "mode": "local-required",
+      "command": "docker compose",
+      "workflow": ["dev-services"]
+    },
+    {
+      "id": "ttyd",
+      "name": "ttyd",
+      "mode": "docker-runnable",
+      "githubUrl": "https://github.com/tsl0922/ttyd",
+      "dockerImage": "tsl0922/ttyd:alpine",
+      "endpoint": "http://127.0.0.1:7681",
+      "workflow": ["terminal-window"]
+    },
+    {
+      "id": "code-server",
+      "name": "code-server",
+      "mode": "docker-runnable",
+      "githubUrl": "https://github.com/coder/code-server",
+      "dockerImage": "codercom/code-server:latest",
+      "endpoint": "http://127.0.0.1:8080",
+      "workflow": ["code-window"]
+    },
+    {
+      "id": "playwright",
+      "name": "Playwright",
+      "mode": "node-runnable",
+      "githubUrl": "https://github.com/microsoft/playwright",
+      "nodePackage": "@playwright/test",
+      "workflow": ["web-simulator-e2e", "visual-regression"]
+    },
+    {
+      "id": "gltf-validator",
+      "name": "glTF Validator",
+      "mode": "node-runnable",
+      "githubUrl": "https://github.com/KhronosGroup/glTF-Validator",
+      "nodePackage": "gltf-validator",
+      "workflow": ["asset-validation"]
+    },
+    {
+      "id": "sourcekit-lsp",
+      "name": "SourceKit-LSP",
+      "mode": "optional-swift-toolchain",
+      "githubUrl": "https://github.com/swiftlang/sourcekit-lsp",
+      "command": "sourcekit-lsp",
+      "workflow": ["future-swift-source-intelligence"]
+    },
+    {
+      "id": "swift-format",
+      "name": "swift-format",
+      "mode": "optional-swift-toolchain",
+      "githubUrl": "https://github.com/swiftlang/swift-format",
+      "command": "swift-format",
+      "workflow": ["future-swift-formatting"]
+    },
+    {
+      "id": "xcodegen",
+      "name": "XcodeGen",
+      "mode": "optional-mac-builder",
+      "githubUrl": "https://github.com/yonaskolb/XcodeGen",
+      "command": "xcodegen",
+      "workflow": ["future-xcode-project-generation"]
+    },
+    {
+      "id": "tuist",
+      "name": "Tuist",
+      "mode": "optional-mac-builder",
+      "githubUrl": "https://github.com/tuist/tuist",
+      "command": "tuist",
+      "workflow": ["future-xcode-project-generation"]
+    },
+    {
+      "id": "xcodebuild",
+      "name": "xcodebuild",
+      "mode": "mac-only",
+      "command": "xcodebuild",
+      "workflow": ["future-mac-builder-only"]
+    },
+    {
+      "id": "xcrun",
+      "name": "xcrun",
+      "mode": "mac-only",
+      "command": "xcrun",
+      "workflow": ["future-mac-builder-only"]
+    }
+  ]
+}

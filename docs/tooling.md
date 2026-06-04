@@ -1,0 +1,78 @@
+# Tooling
+
+This workflow is Linux-first. It uses GitHub/open-source tools that are useful
+without macOS while preserving a clear boundary around tools that require Xcode.
+
+## Current workflow
+
+Run the local environment check:
+
+```bash
+pnpm tools:doctor
+```
+
+Run the architecture and workflow compliance check:
+
+```bash
+pnpm compliance:check
+```
+
+Run the full local workflow gate:
+
+```bash
+pnpm workflow:check
+```
+
+Start browser-based developer surfaces for the spatial windows:
+
+```bash
+LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) pnpm dev:services
+```
+
+The services bind to loopback only:
+
+```text
+ttyd:        http://127.0.0.1:7681
+code-server: http://127.0.0.1:8080
+```
+
+## Tool classes
+
+### Directly usable now
+
+- Node.js, pnpm, Git, Docker, Docker Compose.
+- Playwright for web simulator smoke tests and later visual regression.
+- glTF Validator for future 3D asset checks.
+- ttyd through Docker for a browser terminal window.
+- code-server through Docker for a browser IDE window.
+
+### Useful but optional in this Linux environment
+
+- SourceKit-LSP and swift-format when a Linux Swift toolchain is installed.
+- OpenUSD when asset conversion/inspection is needed on Linux.
+
+### Mac-builder only
+
+- Xcode, xcodebuild, xcrun, XcodeGen, Tuist, XcodeProj, and real visionOS
+  simulator/device workflows.
+
+These tools must not be required by `dev`, `build`, `typecheck`, or
+`workflow:check` in the Linux workflow.
+
+## Researched sources
+
+- SourceKit-LSP: https://github.com/swiftlang/sourcekit-lsp
+- swift-format: https://github.com/swiftlang/swift-format
+- XcodeGen: https://github.com/yonaskolb/XcodeGen
+- Tuist: https://github.com/tuist/tuist
+- XcodeProj: https://github.com/tuist/XcodeProj
+- Awesome visionOS: https://github.com/tomkrikorian/awesome-visionOS
+- WebXR samples: https://github.com/immersive-web/webxr-samples
+- WebKit Vision Pro WebXR natural input: https://webkit.org/blog/15162/introducing-natural-input-for-webxr-in-apple-vision-pro/
+- Playwright: https://github.com/microsoft/playwright
+- ttyd: https://github.com/tsl0922/ttyd
+- code-server: https://github.com/coder/code-server
+- noVNC: https://github.com/novnc/noVNC
+- KasmVNC: https://github.com/kasmtech/KasmVNC
+- OpenUSD: https://github.com/PixarAnimationStudios/OpenUSD
+- glTF Validator: https://github.com/KhronosGroup/glTF-Validator
