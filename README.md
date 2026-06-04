@@ -137,6 +137,15 @@ VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check
 For a real remote Mac execution plane, use the AWS EC2 Mac builder workflow in
 `docs/workflows/aws-ec2-mac-builder.md`.
 
+AWS baseline setup is guarded by a 100 USD budget cap and does not start EC2
+Mac:
+
+```bash
+pnpm aws:mac:plan
+pnpm aws:mac:doctor
+pnpm aws:mac:deploy-baseline
+```
+
 For App Store/TestFlight release planning, signing checks, IPA validation, and
 optional upload-tool evaluation, use `docs/workflows/app-store-release.md`.
 

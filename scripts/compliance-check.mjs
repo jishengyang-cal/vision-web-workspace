@@ -51,6 +51,11 @@ const requiredScripts = [
   "visionos:preflight",
   "visionos:workflow:plan",
   "visionos:mac-build:check",
+  "aws:mac:plan",
+  "aws:mac:doctor",
+  "aws:mac:cost-check",
+  "aws:mac:ensure-budget",
+  "aws:mac:deploy-baseline",
   "hooks:install"
 ];
 for (const script of requiredScripts) {
@@ -67,7 +72,8 @@ const linuxRequiredScriptNames = [
   "test:e2e",
   "test:mac-builder",
   "visionos:preflight",
-  "visionos:workflow:plan"
+  "visionos:workflow:plan",
+  "aws:mac:plan"
 ];
 for (const name of linuxRequiredScriptNames) {
   const script = packageJson.scripts?.[name] ?? "";
@@ -99,6 +105,8 @@ const requiredFiles = [
   "docs/workflows/aws-ec2-mac-builder.md",
   "docs/workflows/app-store-release.md",
   "docs/workflows/mcp-and-hooks.md",
+  "infra/aws-mac-builder/config.example.json",
+  "infra/aws-mac-builder/baseline.cfn.yaml",
   "workflows/visionos-development.json",
   "skills/visionos-dev/SKILL.md",
   "skills/visionos-dev/references/boundaries.md",
@@ -108,6 +116,7 @@ const requiredFiles = [
   "mcp/interfaces/docs-index.json",
   "mcp/interfaces/device-lab.json",
   "services/mac-builder-mock/src/index.ts",
+  "scripts/aws-mac-builder.mjs",
   "tests/mac-builder.e2e.mjs",
   ".githooks/pre-commit",
   ".githooks/pre-push"
@@ -174,6 +183,24 @@ if (!awsWorkflow.includes("24-hour minimum allocation period")) {
 }
 if (!awsWorkflow.includes("never receive AWS credentials")) {
   violations.push("AWS EC2 Mac workflow must preserve client credential boundary");
+}
+if (!awsWorkflow.includes("100 USD monthly cap")) {
+  violations.push("AWS EC2 Mac workflow must document the 100 USD cost guard");
+}
+
+const awsConfig = JSON.parse(readFileSync("infra/aws-mac-builder/config.example.json", "utf8"));
+if (awsConfig.monthlyBudgetLimitUsd !== 100) {
+  violations.push("AWS Mac Builder example config must preserve 100 USD budget limit");
+}
+
+const awsBaselineTemplate = readFileSync("infra/aws-mac-builder/baseline.cfn.yaml", "utf8");
+if (/AWS::EC2::Host|AWS::EC2::Instance|allocate-hosts|run-instances|mac[0-9a-z.-]*\.metal/i.test(awsBaselineTemplate)) {
+  violations.push("AWS baseline template must not allocate or run EC2 Mac resources");
+}
+
+const awsScript = readFileSync("scripts/aws-mac-builder.mjs", "utf8");
+if (/\[\s*["']ec2["']\s*,\s*["'](?:allocate-hosts|run-instances)["']/.test(awsScript)) {
+  violations.push("AWS Mac Builder script must not allocate hosts or run instances in baseline phase");
 }
 
 const releaseWorkflow = readFileSync("docs/workflows/app-store-release.md", "utf8");

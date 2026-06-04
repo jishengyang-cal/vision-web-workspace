@@ -74,8 +74,20 @@ These tools must not be required by `dev`, `build`, `typecheck`, or
 - AWS EC2 Mac for real native build/test/archive execution.
 - AWS CLI, SSM Session Manager, S3, CloudWatch, KMS, IAM, and Secrets Manager
   for provisioning, access, artifacts, logs, encryption, and secret boundaries.
+- AWS Mac Builder Cost Guard for enforcing the 100 USD budget and blocking Mac
+  Dedicated Host allocation during baseline setup.
 
 The AWS workflow is documented in `docs/workflows/aws-ec2-mac-builder.md`.
+
+Baseline commands:
+
+```bash
+pnpm aws:mac:plan
+pnpm aws:mac:doctor
+pnpm aws:mac:ensure-budget
+pnpm aws:mac:cost-check
+pnpm aws:mac:deploy-baseline
+```
 
 ### Release and upload tools
 

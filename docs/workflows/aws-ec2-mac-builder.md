@@ -47,6 +47,21 @@ credentials.
 
 ## AWS resource baseline
 
+This repository now includes a baseline configuration script and CloudFormation
+template for the non-Mac part of the setup:
+
+```bash
+pnpm aws:mac:plan
+pnpm aws:mac:doctor
+pnpm aws:mac:ensure-budget
+pnpm aws:mac:cost-check
+pnpm aws:mac:deploy-baseline
+```
+
+`aws:mac:deploy-baseline` may create only Budget, S3, KMS, CloudWatch, IAM role,
+and IAM instance profile resources. It does not allocate an EC2 Mac Dedicated
+Host or run an EC2 Mac instance.
+
 ### Accounts and IAM
 
 - Dedicated AWS account or isolated workload account for Mac builder.
@@ -301,6 +316,37 @@ Because the EC2 Mac Dedicated Host has a 24-hour minimum allocation period:
 6. Release the Dedicated Host only after the 24-hour minimum is satisfied.
 7. Confirm AWS scrubbing workflow completes before reusing assumptions about
    local SSD/NVRAM state.
+
+## Cost guard implementation
+
+The repository cost guard defaults to a 100 USD monthly cap:
+
+```bash
+AWS_PROFILE=vision-mac-builder \
+AWS_REGION=us-east-1 \
+AWS_BUDGET_LIMIT_USD=100 \
+pnpm aws:mac:cost-check
+```
+
+The guard checks:
+
+- current month-to-date unblended cost through Cost Explorer,
+- presence of the configured AWS Budget,
+- absence of EC2 Mac Dedicated Hosts in the selected region.
+
+Deployment command:
+
+```bash
+AWS_PROFILE=vision-mac-builder \
+AWS_REGION=us-east-1 \
+AWS_BUDGET_LIMIT_USD=100 \
+AWS_BUDGET_EMAIL=you@example.com \
+pnpm aws:mac:deploy-baseline
+```
+
+`AWS_BUDGET_EMAIL` is optional, but without it the budget is created without
+email notifications. Do not proceed to real EC2 Mac allocation until a budget
+exists and `pnpm aws:mac:cost-check` passes.
 
 ## Teardown workflow
 

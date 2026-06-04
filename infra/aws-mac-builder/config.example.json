@@ -1,0 +1,23 @@
+{
+  "profile": "vision-mac-builder",
+  "region": "us-east-1",
+  "environment": "dev",
+  "monthlyBudgetLimitUsd": 100,
+  "budgetName": "vision-web-workspace-mac-builder-dev-100-usd",
+  "stackName": "vision-web-workspace-mac-builder-baseline-dev",
+  "artifactRetentionDays": 30,
+  "logRetentionDays": 14,
+  "allowedActionsInThisPhase": [
+    "create or update account-level budget",
+    "create S3 artifact bucket",
+    "create KMS key for artifact encryption",
+    "create CloudWatch log group",
+    "create IAM role and instance profile for a future builder"
+  ],
+  "forbiddenActionsInThisPhase": [
+    "allocate EC2 Mac Dedicated Host",
+    "run EC2 Mac instance",
+    "import Apple signing material",
+    "upload App Store Connect credentials"
+  ]
+}

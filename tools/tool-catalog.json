@@ -89,6 +89,13 @@
       "workflow": ["future-aws-ec2-mac-provisioning", "future-s3-artifacts", "future-cloudwatch-logs"]
     },
     {
+      "id": "aws-mac-cost-guard",
+      "name": "AWS Mac Builder Cost Guard",
+      "mode": "node-runnable",
+      "command": "node",
+      "workflow": ["aws-budget-check", "aws-mac-host-block", "aws-baseline-deploy-guard"]
+    },
+    {
       "id": "aws-ec2-mac",
       "name": "Amazon EC2 Mac",
       "mode": "cloud-mac-builder",
