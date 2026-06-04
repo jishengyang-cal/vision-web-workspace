@@ -13,7 +13,9 @@ Initial interface specs live in `mcp/interfaces`:
 
 - `mac-builder.json`: native Xcode build, simulator, archive, and `.xcresult`
   export through a controlled Mac host. A local mock implementation is
-  available through `pnpm dev:mac-builder:mock`.
+  available through `pnpm dev:mac-builder:mock`; the planned production
+  deployment target is AWS EC2 Mac, documented in
+  `docs/workflows/aws-ec2-mac-builder.md`.
 - `docs-index.json`: searchable project and Apple documentation index.
 - `device-lab.json`: Apple Vision Pro install, debug capture, and test records.
 

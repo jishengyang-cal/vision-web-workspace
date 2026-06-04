@@ -134,6 +134,9 @@ pnpm dev:mac-builder:mock
 VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check
 ```
 
+For a real remote Mac execution plane, use the AWS EC2 Mac builder workflow in
+`docs/workflows/aws-ec2-mac-builder.md`.
+
 Install local git hooks:
 
 ```bash

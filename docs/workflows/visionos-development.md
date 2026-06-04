@@ -36,6 +36,7 @@ pretend to run Apple's native visionOS toolchain.
 | Web e2e | linux-runnable | `pnpm test:e2e` | Verifies browser simulator and gateway smoke behavior. |
 | Mock Mac builder | linux-runnable, mcp-candidate | `pnpm dev:mac-builder:mock` | Simulates Mac builder job lifecycle without running Xcode. |
 | Mac builder e2e | linux-runnable, mcp-candidate | `pnpm test:mac-builder` | Verifies build job request, polling, logs, artifacts, `.xcresult`, and failure handling. |
+| AWS EC2 Mac builder plan | mac-builder-required, mcp-candidate | documented workflow | Defines Dedicated Host, bootstrap, artifact, audit, and teardown workflow. |
 | Swift source intelligence | optional-swift-toolchain | none yet | Future SourceKit-LSP and swift-format checks when Swift exists on Linux. |
 | Native project generation | mac-builder-required | future Mac builder MCP | Generates or updates Xcode project state. |
 | Native build | mac-builder-required | `pnpm visionos:mac-build:check` | Checks that native build must be delegated to Mac builder. |
@@ -68,6 +69,9 @@ path into three planes:
   signing, `.xcresult`, archive, and export.
 - Device/release plane: Vision Pro pairing, install, debug capture,
   TestFlight, and App Store Connect.
+
+AWS EC2 Mac is the preferred remote Mac builder deployment target for the Mac
+builder plane. See `docs/workflows/aws-ec2-mac-builder.md`.
 
 The Vision Pro client remains a UI/input surface. It does not receive SSH keys,
 GitHub tokens, signing identities, provisioning profiles, App Store Connect

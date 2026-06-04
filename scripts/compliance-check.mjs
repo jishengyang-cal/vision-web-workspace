@@ -96,6 +96,7 @@ if (!architecture.includes("does not give the Vision Pro client direct access"))
 
 const requiredFiles = [
   "docs/workflows/visionos-development.md",
+  "docs/workflows/aws-ec2-mac-builder.md",
   "docs/workflows/mcp-and-hooks.md",
   "workflows/visionos-development.json",
   "skills/visionos-dev/SKILL.md",
@@ -127,6 +128,9 @@ for (const id of ["mock-mac-builder", "mac-builder-e2e"]) {
     violations.push(`visionOS workflow is missing mock builder phase: ${id}`);
   }
 }
+if (!phaseIds.has("aws-ec2-mac-builder-plan")) {
+  violations.push("visionOS workflow is missing AWS EC2 Mac builder plan phase");
+}
 for (const phase of workflow.phases) {
   if (
     ["native-build", "official-simulator-debug", "device-test", "release"].includes(phase.id) &&
@@ -154,6 +158,17 @@ if (/child_process|\bspawn(Sync)?\b|\bexecFile(Sync)?\b|\bexecSync\b/.test(macBu
 const macBuilderInterface = JSON.parse(readFileSync("mcp/interfaces/mac-builder.json", "utf8"));
 if (macBuilderInterface.status !== "mock-implemented") {
   violations.push("mac-builder MCP interface must record mock implementation status");
+}
+if (macBuilderInterface.awsEc2MacDeployment?.minimumHostAllocationHours !== 24) {
+  violations.push("mac-builder MCP interface must record AWS EC2 Mac 24-hour minimum host allocation");
+}
+
+const awsWorkflow = readFileSync("docs/workflows/aws-ec2-mac-builder.md", "utf8");
+if (!awsWorkflow.includes("24-hour minimum allocation period")) {
+  violations.push("AWS EC2 Mac workflow must document the 24-hour Dedicated Host minimum");
+}
+if (!awsWorkflow.includes("never receive AWS credentials")) {
+  violations.push("AWS EC2 Mac workflow must preserve client credential boundary");
 }
 
 const preCommit = readFileSync(".githooks/pre-commit", "utf8");

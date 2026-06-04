@@ -69,6 +69,14 @@ code-server: http://127.0.0.1:8080
 These tools must not be required by `dev`, `build`, `typecheck`, or
 `workflow:check` in the Linux workflow.
 
+### Cloud Mac builder
+
+- AWS EC2 Mac for real native build/test/archive execution.
+- AWS CLI, SSM Session Manager, S3, CloudWatch, KMS, IAM, and Secrets Manager
+  for provisioning, access, artifacts, logs, encryption, and secret boundaries.
+
+The AWS workflow is documented in `docs/workflows/aws-ec2-mac-builder.md`.
+
 ## Hooks and MCP
 
 - Install local hooks with `pnpm hooks:install`.

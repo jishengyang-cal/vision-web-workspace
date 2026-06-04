@@ -13,6 +13,16 @@
       "GET /jobs/:id"
     ]
   },
+  "awsEc2MacDeployment": {
+    "workflowDocument": "docs/workflows/aws-ec2-mac-builder.md",
+    "hostModel": "EC2 Mac Dedicated Host",
+    "minimumHostAllocationHours": 24,
+    "preferredConnectivity": ["SSM Session Manager", "private SSH", "private builder API"],
+    "artifactStore": "S3 with SSE-KMS",
+    "logStore": "CloudWatch Logs",
+    "secretStore": "AWS Secrets Manager or SSM Parameter Store plus macOS keychain",
+    "defaultBuilderUrlEnv": "VISIONOS_MAC_BUILDER_URL"
+  },
   "capabilities": [
     {
       "id": "visionos.preflight",

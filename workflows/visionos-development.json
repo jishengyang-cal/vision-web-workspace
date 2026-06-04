@@ -60,6 +60,13 @@
       "produces": ["job lifecycle result", "adapter client result", "artifact reference result"]
     },
     {
+      "id": "aws-ec2-mac-builder-plan",
+      "title": "AWS EC2 Mac builder deployment plan",
+      "capabilities": ["mac-builder-required", "mcp-candidate"],
+      "command": null,
+      "produces": ["Dedicated Host plan", "Mac bootstrap plan", "AWS artifact/log plan", "teardown plan"]
+    },
+    {
       "id": "swift-source-intelligence",
       "title": "Swift source intelligence",
       "capabilities": ["optional-swift-toolchain"],

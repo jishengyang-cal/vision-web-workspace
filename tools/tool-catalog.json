@@ -82,6 +82,40 @@
       "workflow": ["mock-native-build-control-plane", "mac-builder-e2e"]
     },
     {
+      "id": "aws-cli",
+      "name": "AWS CLI",
+      "mode": "optional-cloud-toolchain",
+      "command": "aws",
+      "workflow": ["future-aws-ec2-mac-provisioning", "future-s3-artifacts", "future-cloudwatch-logs"]
+    },
+    {
+      "id": "aws-ec2-mac",
+      "name": "Amazon EC2 Mac",
+      "mode": "cloud-mac-builder",
+      "workflow": ["future-native-build", "future-official-simulator", "future-archive"]
+    },
+    {
+      "id": "aws-ssm",
+      "name": "AWS Systems Manager Session Manager",
+      "mode": "optional-cloud-toolchain",
+      "command": "aws",
+      "workflow": ["future-private-mac-builder-access"]
+    },
+    {
+      "id": "aws-s3",
+      "name": "Amazon S3",
+      "mode": "cloud-artifact-store",
+      "command": "aws",
+      "workflow": ["future-build-artifacts", "future-xcresult-storage"]
+    },
+    {
+      "id": "aws-cloudwatch",
+      "name": "Amazon CloudWatch Logs",
+      "mode": "cloud-log-store",
+      "command": "aws",
+      "workflow": ["future-mac-builder-logs"]
+    },
+    {
       "id": "sourcekit-lsp",
       "name": "SourceKit-LSP",
       "mode": "optional-swift-toolchain",
