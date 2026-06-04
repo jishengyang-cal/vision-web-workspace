@@ -107,6 +107,13 @@
       "capabilities": ["mac-builder-required", "apple-account-required", "mcp-candidate"],
       "command": null,
       "produces": ["signed archive", "exported IPA", "upload result"]
+    },
+    {
+      "id": "app-store-release-plan",
+      "title": "App Store and TestFlight release plan",
+      "capabilities": ["mac-builder-required", "apple-account-required", "mcp-candidate"],
+      "command": null,
+      "produces": ["signing preflight", "IPA validation", "upload backend policy", "TestFlight checklist", "review checklist"]
     }
   ]
 }

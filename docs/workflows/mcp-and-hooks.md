@@ -18,6 +18,8 @@ Initial interface specs live in `mcp/interfaces`:
   `docs/workflows/aws-ec2-mac-builder.md`.
 - `docs-index.json`: searchable project and Apple documentation index.
 - `device-lab.json`: Apple Vision Pro install, debug capture, and test records.
+- `app-store-release.json`: App Store/TestFlight upload, build polling,
+  signing preflight, and release automation contract.
 
 These specs are contracts. They are not active network servers yet.
 

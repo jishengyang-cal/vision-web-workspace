@@ -77,6 +77,18 @@ These tools must not be required by `dev`, `build`, `typecheck`, or
 
 The AWS workflow is documented in `docs/workflows/aws-ec2-mac-builder.md`.
 
+### Release and upload tools
+
+- Apple Transporter and Xcode upload paths remain preferred for Mac Builder
+  uploads.
+- App Store Connect API is preferred for metadata, build polling, TestFlight,
+  and review automation where Apple exposes API support.
+- AppUploader CLI may be evaluated as an optional third-party fallback for
+  cross-platform IPA upload, profile inspection, and screenshot workflows.
+  It requires explicit vendor/credential review before production use.
+
+Release workflow: `docs/workflows/app-store-release.md`.
+
 ## Hooks and MCP
 
 - Install local hooks with `pnpm hooks:install`.

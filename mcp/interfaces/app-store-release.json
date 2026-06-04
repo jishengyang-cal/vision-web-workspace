@@ -1,0 +1,53 @@
+{
+  "name": "visionos-app-store-release",
+  "version": 1,
+  "status": "planned",
+  "boundary": "Uploads and manages App Store Connect/TestFlight release steps through approved adapters. The browser simulator and Vision Pro client never receive Apple credentials, signing assets, or App Store Connect API keys.",
+  "workflowDocument": "docs/workflows/app-store-release.md",
+  "capabilities": [
+    {
+      "id": "release.signingPreflight",
+      "input": ["repoRef", "bundleId", "profileRef", "certificateRef", "exportMethod"],
+      "output": ["matchStatus", "diagnostics"]
+    },
+    {
+      "id": "release.validateIpa",
+      "input": ["ipaArtifactRef", "bundleId", "version", "buildNumber"],
+      "output": ["validationStatus", "warnings", "errors"]
+    },
+    {
+      "id": "release.uploadIpa",
+      "input": ["ipaArtifactRef", "uploadBackend", "audit"],
+      "output": ["uploadStatus", "buildId", "logs"]
+    },
+    {
+      "id": "release.pollBuildProcessing",
+      "input": ["buildId"],
+      "output": ["processingState", "warnings", "errors"]
+    },
+    {
+      "id": "release.assignTestFlight",
+      "input": ["buildId", "testerGroupId"],
+      "output": ["assignmentStatus"]
+    }
+  ],
+  "uploadBackends": [
+    {
+      "id": "official-transporter",
+      "mode": "preferred-mac-builder"
+    },
+    {
+      "id": "app-store-connect-api",
+      "mode": "preferred-api-where-supported"
+    },
+    {
+      "id": "appuploader-cli",
+      "mode": "optional-third-party-fallback",
+      "requiresApproval": true
+    }
+  ],
+  "secrets": {
+    "allowedInsideAdapter": ["App Store Connect API private key", "app-specific password", "signing identities", "provisioning profiles"],
+    "forbiddenToClient": ["Apple ID password", "app-specific password", "API private key", "p12 password", "certificates", "profiles"]
+  }
+}

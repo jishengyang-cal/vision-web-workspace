@@ -195,6 +195,26 @@
       "workflow": ["future-app-store-upload"]
     },
     {
+      "id": "app-store-connect-api",
+      "name": "App Store Connect API",
+      "mode": "apple-service",
+      "workflow": ["future-release-automation", "future-build-polling", "future-testflight-management"]
+    },
+    {
+      "id": "appuploader-cli",
+      "name": "AppUploader CLI",
+      "mode": "optional-third-party-release-tool",
+      "workflow": ["future-optional-ipa-upload", "future-signing-inspection", "future-profile-management"]
+    },
+    {
+      "id": "fastlane",
+      "name": "Fastlane",
+      "mode": "optional-release-tool",
+      "githubUrl": "https://github.com/fastlane/fastlane",
+      "command": "fastlane",
+      "workflow": ["future-release-lane", "future-metadata-automation"]
+    },
+    {
       "id": "xcode-cloud",
       "name": "Xcode Cloud",
       "mode": "apple-service",

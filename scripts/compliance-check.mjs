@@ -97,12 +97,14 @@ if (!architecture.includes("does not give the Vision Pro client direct access"))
 const requiredFiles = [
   "docs/workflows/visionos-development.md",
   "docs/workflows/aws-ec2-mac-builder.md",
+  "docs/workflows/app-store-release.md",
   "docs/workflows/mcp-and-hooks.md",
   "workflows/visionos-development.json",
   "skills/visionos-dev/SKILL.md",
   "skills/visionos-dev/references/boundaries.md",
   "skills/visionos-dev/agents/openai.yaml",
   "mcp/interfaces/mac-builder.json",
+  "mcp/interfaces/app-store-release.json",
   "mcp/interfaces/docs-index.json",
   "mcp/interfaces/device-lab.json",
   "services/mac-builder-mock/src/index.ts",
@@ -130,6 +132,9 @@ for (const id of ["mock-mac-builder", "mac-builder-e2e"]) {
 }
 if (!phaseIds.has("aws-ec2-mac-builder-plan")) {
   violations.push("visionOS workflow is missing AWS EC2 Mac builder plan phase");
+}
+if (!phaseIds.has("app-store-release-plan")) {
+  violations.push("visionOS workflow is missing App Store release plan phase");
 }
 for (const phase of workflow.phases) {
   if (
@@ -169,6 +174,20 @@ if (!awsWorkflow.includes("24-hour minimum allocation period")) {
 }
 if (!awsWorkflow.includes("never receive AWS credentials")) {
   violations.push("AWS EC2 Mac workflow must preserve client credential boundary");
+}
+
+const releaseWorkflow = readFileSync("docs/workflows/app-store-release.md", "utf8");
+if (!releaseWorkflow.includes("AppUploader/AppUploader CLI can be evaluated as an optional release-uploader")) {
+  violations.push("release workflow must treat AppUploader as optional");
+}
+if (!releaseWorkflow.includes("must not receive")) {
+  violations.push("release workflow must preserve credential boundary");
+}
+
+const releaseInterface = JSON.parse(readFileSync("mcp/interfaces/app-store-release.json", "utf8"));
+const appuploaderBackend = releaseInterface.uploadBackends?.find((backend) => backend.id === "appuploader-cli");
+if (!appuploaderBackend || appuploaderBackend.mode !== "optional-third-party-fallback" || appuploaderBackend.requiresApproval !== true) {
+  violations.push("AppUploader CLI must remain an explicitly approved optional fallback");
 }
 
 const preCommit = readFileSync(".githooks/pre-commit", "utf8");

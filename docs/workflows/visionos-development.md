@@ -43,6 +43,7 @@ pretend to run Apple's native visionOS toolchain.
 | Official simulator debug | mac-builder-required | future Mac builder MCP | Runs visionOS simulator, captures logs, screenshots, and `.xcresult`. |
 | Device test | mac-builder-required, device-required | future device lab MCP | Installs and tests on paired Apple Vision Pro. |
 | TestFlight/App Store | mac-builder-required, apple-account-required | future release MCP | Archives, signs, exports, and uploads through Apple tooling. |
+| App Store release plan | mac-builder-required, apple-account-required, mcp-candidate | documented workflow | Defines signing preflight, IPA validation, upload backend policy, TestFlight, and review checklist. |
 
 ## Development loop in this repository
 
@@ -72,6 +73,10 @@ path into three planes:
 
 AWS EC2 Mac is the preferred remote Mac builder deployment target for the Mac
 builder plane. See `docs/workflows/aws-ec2-mac-builder.md`.
+
+Release and TestFlight automation is defined in
+`docs/workflows/app-store-release.md`. AppUploader-style tools are treated as
+optional adapters, not the default credential authority.
 
 The Vision Pro client remains a UI/input surface. It does not receive SSH keys,
 GitHub tokens, signing identities, provisioning profiles, App Store Connect
