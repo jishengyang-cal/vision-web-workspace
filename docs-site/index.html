@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vision Web Workspace - Vision Pro development workflow</title>
+    <meta
+      name="description"
+      content="Vision Web Workspace is a Linux-first development workflow for Apple Vision Pro style web workspaces, browser simulation, and governed Mac Builder handoff."
+    />
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Vision Web Workspace docs home">
+        <span class="brand-mark">V</span>
+        <span>
+          <strong>Vision Web Workspace</strong>
+          <small>read-only documentation surface</small>
+        </span>
+      </a>
+    </header>
+
+    <div class="layout" id="top">
+      <aside class="sidebar" aria-label="Section navigation">
+        <a href="#overview">Overview</a>
+        <a href="#problem">Problem</a>
+        <a href="#what-it-is">What it is</a>
+        <a href="#what-it-is-not">What it is not</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#current-implementation">Current implementation</a>
+        <a href="#operator-workflow">Operator workflow</a>
+        <a href="#reference-docs">Reference docs</a>
+      </aside>
+
+      <main>
+        <section class="hero" id="overview">
+          <div class="hero-intro">
+            <p class="eyebrow">Linux-first workflow for Vision Pro workspace development</p>
+            <h1>Vision Web Workspace</h1>
+            <p class="product-subtitle">
+              Browser-simulated spatial web desktop with governed handoff to a real Mac Builder.
+            </p>
+            <p class="hero-copy">
+              Vision Web Workspace 是一个面向 Apple Vision Pro 空间网页工作区的开发底座。它在 Linux 环境中先定义
+              workspace、window、session 和 Mac Builder contracts，用浏览器模拟可移动网页窗口、终端、代码编辑器和远程浏览器会话；
+              当需要原生 visionOS 构建、模拟器测试、归档或签名时，再把请求交给受控的远程 Mac + Xcode 执行面。
+            </p>
+            <div class="value-grid" aria-label="Vision Web Workspace value points">
+              <article>
+                <span class="badge">Simulate before Mac</span>
+                <h3>先在浏览器中验证空间工作区交互。</h3>
+                <p>Linux 开发环路覆盖窗口移动、缩放、聚焦、布局保存、终端和浏览器会话，不假装运行 Apple 官方模拟器。</p>
+              </article>
+              <article>
+                <span class="badge">Web windows as workspace</span>
+                <h3>每个窗口都是可控网页工作面。</h3>
+                <p>窗口可以承载 SSH terminal、code-server、文档、CI dashboard、日志或远程浏览器流，服务于真实开发流程。</p>
+              </article>
+              <article>
+                <span class="badge">Governed Mac handoff</span>
+                <h3>原生构建交给明确的 Mac Builder 协议。</h3>
+                <p>Linux 侧提交 build/test/archive 请求；macOS worker 负责 XcodeGen、xcodebuild、simulator、artifact 和 `.xcresult`。</p>
+              </article>
+            </div>
+            <div class="hero-actions">
+              <a class="button primary" href="#problem">查看解决的问题</a>
+              <a class="button" href="#architecture">查看架构</a>
+              <a class="button" href="#operator-workflow">查看流程</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section split" id="problem">
+          <div>
+            <p class="eyebrow">Problem</p>
+            <h2>没有 Mac 时，visionOS 开发不能从原生构建开始。</h2>
+            <p>
+              Apple 官方 visionOS 编译、签名、模拟器和设备测试依赖 macOS、Xcode、visionOS SDK 和开发者账号。
+              但产品设计、窗口模型、远程开发界面和构建请求协议不应该等到 Mac 环境全部就绪后才开始。
+            </p>
+            <p>
+              这个 repo 把可在 Linux 验证的部分前置：窗口状态、网页工作区、会话网关、workflow 检查和 Mac Builder 请求链路。
+              原生构建仍然由真实 Mac 承担，避免把浏览器模拟误写成 Apple 官方模拟器。
+            </p>
+          </div>
+          <div class="command-box">
+            <h3>Product risk it reduces</h3>
+            <p>
+              在投入 EC2 Mac、MacBook、Xcode 签名和设备测试之前，先确认工作区交互、远程终端/浏览器体验和构建控制协议是否成立。
+            </p>
+          </div>
+        </section>
+
+        <section class="section" id="what-it-is">
+          <div class="section-heading">
+            <p class="eyebrow">What it is</p>
+            <h2>一个把空间网页工作区和 Mac 构建面分离的开发平台。</h2>
+            <p>
+              系统把产品交互、session gateway 和 native build handoff 拆成可验证的层。这样 Linux 可以推进大部分工作流，
+              Mac 只承担 Apple 工具链必须承担的部分。
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article>
+              <span class="badge">Workspace contracts</span>
+              <h3>窗口和会话模型</h3>
+              <p>Shared contracts 定义 workspace、panel、layout、session 和 Mac build request，不把状态散落在 UI 中。</p>
+            </article>
+            <article>
+              <span class="badge">Browser simulator</span>
+              <h3>浏览器空间工作区</h3>
+              <p>Web simulator 用普通浏览器验证 head-locked desktop、movable windows、terminal/code/browser/doc/log panels。</p>
+            </article>
+            <article>
+              <span class="badge">Session gateway</span>
+              <h3>远程开发会话入口</h3>
+              <p>Gateway skeleton 统一创建 terminal、code 和 browser session，后续可接 ttyd、code-server、noVNC 或 WebRTC。</p>
+            </article>
+            <article>
+              <span class="badge">Mac Builder handoff</span>
+              <h3>原生构建控制链</h3>
+              <p>Mock 和 agent packages 验证 build job、状态轮询、日志、artifact 和 `.xcresult` 返回格式。</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="what-it-is-not">
+          <div class="section-heading">
+            <p class="eyebrow">What it is not</p>
+            <h2>边界直接写在开发流程里。</h2>
+            <p>这个 repo 不绕过 Apple 工具链，也不声称浏览器模拟等价于 Vision Pro 实机。</p>
+          </div>
+          <div class="rule-grid">
+            <div>不是 Xcode、visionOS SDK、Apple 官方模拟器或签名系统的替代品。</div>
+            <div>不是 Enterprise API 或系统级 follow window entitlement 的替代方案。</div>
+            <div>不是生产远程运维平台；终端、浏览器和代码会话仍需要受控网关。</div>
+            <div>不是 App Store release authority；上传、签名和 TestFlight 仍属于后续 Mac/Apple workflow。</div>
+            <div>不把 SSH keys、GitHub tokens 或生产机器权限放进 Vision Pro client。</div>
+            <div>不声称 Linux 可以编译、安装或运行原生 visionOS app。</div>
+          </div>
+        </section>
+
+        <section class="section" id="architecture">
+          <div class="section-heading">
+            <p class="eyebrow">Architecture</p>
+            <h2>从 Linux simulator 到 Mac Builder 的控制链</h2>
+            <p>
+              本地开发验证窗口和会话语义；原生 build/test/archive 请求通过 adapter 发给 Mac Builder。
+              文档站只是 read-only 说明，真实边界仍在 contracts、workflow JSON、scripts 和 native source 中。
+            </p>
+          </div>
+          <div class="flow" aria-label="Vision Web Workspace architecture chain">
+            <div class="flow-node">Workspace contracts<br /><span>window / session / layout</span></div>
+            <div class="flow-node">Browser simulator<br /><span>Linux interaction loop</span></div>
+            <div class="flow-node">Gateway<br /><span>terminal / code / browser sessions</span></div>
+            <div class="flow-node">Mac Builder adapter<br /><span>build / test / archive request</span></div>
+            <div class="flow-node">Remote Mac<br /><span>XcodeGen / xcodebuild</span></div>
+            <div class="flow-node">Artifacts<br /><span>logs / bundles / xcresult</span></div>
+          </div>
+          <div class="diagram" aria-label="Vision Web Workspace execution diagram">
+            <svg viewBox="0 0 960 300" role="img" aria-labelledby="diagram-title diagram-desc">
+              <title id="diagram-title">Vision Web Workspace workflow</title>
+              <desc id="diagram-desc">A workflow diagram from Linux browser simulator to governed Mac Builder and Apple artifacts.</desc>
+              <rect width="960" height="300" rx="8" fill="#f8faf5" />
+              <g font-family="Inter, Arial, sans-serif">
+                <text x="38" y="52" fill="#172018" font-size="26" font-weight="800">Linux-first, Mac-required where Apple requires it</text>
+                <text x="40" y="82" fill="#5c665e" font-size="15">Simulator and contracts stay local; native build and signing stay on macOS.</text>
+              </g>
+              <g transform="translate(42 126)" font-family="Inter, Arial, sans-serif">
+                <rect width="170" height="92" rx="8" fill="#fff" stroke="#cfd8ca" />
+                <text x="18" y="34" fill="#172018" font-size="16" font-weight="800">Contracts</text>
+                <text x="18" y="58" fill="#5c665e" font-size="13">workspace / sessions</text>
+              </g>
+              <g transform="translate(250 126)" font-family="Inter, Arial, sans-serif">
+                <rect width="170" height="92" rx="8" fill="#fff" stroke="#cfd8ca" />
+                <text x="18" y="34" fill="#172018" font-size="16" font-weight="800">Web simulator</text>
+                <text x="18" y="58" fill="#5c665e" font-size="13">windows / browser UI</text>
+              </g>
+              <g transform="translate(458 126)" font-family="Inter, Arial, sans-serif">
+                <rect width="170" height="92" rx="8" fill="#fff" stroke="#cfd8ca" />
+                <text x="18" y="34" fill="#172018" font-size="16" font-weight="800">Gateway</text>
+                <text x="18" y="58" fill="#5c665e" font-size="13">remote sessions</text>
+              </g>
+              <g transform="translate(666 126)" font-family="Inter, Arial, sans-serif">
+                <rect width="210" height="92" rx="8" fill="#ecf4ee" stroke="#8bc39f" />
+                <text x="18" y="34" fill="#1f7a4d" font-size="16" font-weight="800">Mac Builder</text>
+                <text x="18" y="58" fill="#4f6b59" font-size="13">Xcode / simulator / archive</text>
+              </g>
+              <g stroke="#1f7a4d" stroke-width="2">
+                <path d="M216 172h30" />
+                <path d="M424 172h30" />
+                <path d="M632 172h30" />
+              </g>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section" id="current-implementation">
+          <div class="section-heading">
+            <p class="eyebrow">Current implementation</p>
+            <h2>当前主干中的可验证落点</h2>
+            <p>这些能力都能在 repo 的 packages、apps、services、native source、scripts、tests 或 docs 中找到支撑。</p>
+          </div>
+          <div class="implementation-grid">
+            <article>
+              <h3>Workspace simulator</h3>
+              <p>Browser simulator covers movable, resizable and focusable web windows with terminal, code, browser, docs and logs panels.</p>
+            </article>
+            <article>
+              <h3>Shared contracts</h3>
+              <p>Contracts package defines window, session, layout and Mac Builder request metadata used by simulator and workflow scripts.</p>
+            </article>
+            <article>
+              <h3>Session gateway</h3>
+              <p>Gateway skeleton exposes controlled session creation for terminal, code and browser windows.</p>
+            </article>
+            <article>
+              <h3>Native visionOS shell</h3>
+              <p>SwiftUI/RealityKit source scaffold and XcodeGen project spec model the future mixed workspace app.</p>
+            </article>
+            <article>
+              <h3>Immersive scenes</h3>
+              <p>Office and water lounge environment docs and native source prototype full immersive scene entries.</p>
+            </article>
+            <article>
+              <h3>Mac Builder workflow</h3>
+              <p>Mock service, native agent package and e2e test validate build job submission, polling, logs and artifacts without Xcode on Linux.</p>
+            </article>
+            <article>
+              <h3>AWS Mac plan</h3>
+              <p>Guarded scripts define budget checks, baseline deployment, worker quota/status and launch/teardown commands.</p>
+            </article>
+            <article>
+              <h3>Workflow compliance</h3>
+              <p>Tool doctor, compliance check and visionOS workflow planner keep Linux, Mac Builder, device and release responsibilities separate.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section split" id="operator-workflow">
+          <div>
+            <p class="eyebrow">Operator workflow</p>
+            <h2>本地开发和 Mac Builder 验证流程</h2>
+            <p>本地流程先验证 contracts、simulator 和 gateway；native build check 可以连接 mock builder，也可以在真实 Mac Builder 存在时发起远程请求。</p>
+            <ol class="steps">
+              <li>安装依赖：`pnpm install`。</li>
+              <li>启动 web simulator：`pnpm dev`。</li>
+              <li>运行 workflow 检查：`pnpm workflow:check`。</li>
+              <li>启动 mock builder：`pnpm dev:mac-builder:mock`。</li>
+              <li>提交 native build check：`VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check`。</li>
+            </ol>
+          </div>
+          <div class="command-box">
+            <h3>Command sequence</h3>
+            <pre><code>pnpm install
+pnpm dev
+pnpm workflow:check
+pnpm dev:mac-builder:mock
+VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check</code></pre>
+          </div>
+        </section>
+
+        <section class="section" id="reference-docs">
+          <div class="section-heading">
+            <p class="eyebrow">Reference docs</p>
+            <h2>后置参考信息</h2>
+            <p>这些链接用于定位真实工程 surface。docs-site 只提供 read-only 导览，不新增 authority。</p>
+          </div>
+          <div class="reference-grid">
+            <article>
+              <h3>Architecture</h3>
+              <p><a href="https://github.com/jishengyang-cal/vision-web-workspace/blob/main/docs/architecture.md">docs/architecture.md</a></p>
+            </article>
+            <article>
+              <h3>visionOS workflow</h3>
+              <p><a href="https://github.com/jishengyang-cal/vision-web-workspace/blob/main/docs/workflows/visionos-development.md">docs/workflows/visionos-development.md</a></p>
+            </article>
+            <article>
+              <h3>AWS EC2 Mac Builder</h3>
+              <p><a href="https://github.com/jishengyang-cal/vision-web-workspace/blob/main/docs/workflows/aws-ec2-mac-builder.md">docs/workflows/aws-ec2-mac-builder.md</a></p>
+            </article>
+            <article>
+              <h3>Native visionOS shell</h3>
+              <p><a href="https://github.com/jishengyang-cal/vision-web-workspace/tree/main/native/visionos">native/visionos</a></p>
+            </article>
+          </div>
+        </section>
+
+        <footer class="footer">
+          <p>
+            GitHub Pages deployment: this site is a read-only documentation surface. The authoritative implementation remains in contracts,
+            workflow JSON, scripts, services, native source and tests.
+          </p>
+          <p>
+            Source:
+            <a href="https://github.com/jishengyang-cal/vision-web-workspace">repository</a>
+            <a href="https://github.com/jishengyang-cal/vision-web-workspace/tree/main/docs">docs</a>
+            <a href="https://github.com/jishengyang-cal/vision-web-workspace/tree/main/workflows">workflows</a>
+          </p>
+        </footer>
+      </main>
+    </div>
+    <script src="./assets/app.js"></script>
+  </body>
+</html>
+
