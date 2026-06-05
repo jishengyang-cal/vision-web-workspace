@@ -17,3 +17,26 @@ const observer = new IntersectionObserver(
 
 sections.forEach((section) => observer.observe(section));
 
+const translationButtons = Array.from(document.querySelectorAll("[data-translate-lang]"));
+
+function canonicalSiteUrl() {
+  const configured = document.body.dataset.siteUrl;
+  const base = configured || `${window.location.origin}${window.location.pathname}`;
+  return new URL(window.location.hash || "", base).toString();
+}
+
+translationButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const targetLanguage = button.dataset.translateLang;
+    const sourceUrl = canonicalSiteUrl();
+    if (targetLanguage === "en") {
+      window.location.href = sourceUrl;
+      return;
+    }
+    const translated = new URL("https://translate.google.com/translate");
+    translated.searchParams.set("sl", "en");
+    translated.searchParams.set("tl", targetLanguage);
+    translated.searchParams.set("u", sourceUrl);
+    window.location.href = translated.toString();
+  });
+});
