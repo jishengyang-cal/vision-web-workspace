@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,7 +10,7 @@
     />
     <link rel="stylesheet" href="./assets/styles.css" />
   </head>
-  <body>
+  <body data-site-url="https://jishengyang-cal.github.io/vision-web-workspace/">
     <header class="site-header">
       <a class="brand" href="#top" aria-label="Vision Web Workspace docs home">
         <span class="brand-mark">V</span>
@@ -19,6 +19,11 @@
           <small>read-only documentation surface</small>
         </span>
       </a>
+      <nav class="language-tools" aria-label="Automatic translation">
+        <button type="button" data-translate-lang="zh-CN">中</button>
+        <button type="button" data-translate-lang="en">English</button>
+        <button type="button" data-translate-lang="de">德</button>
+      </nav>
     </header>
 
     <div class="layout" id="top">
@@ -42,31 +47,32 @@
               Browser-simulated spatial web desktop with governed handoff to a real Mac Builder.
             </p>
             <p class="hero-copy">
-              Vision Web Workspace 是一个面向 Apple Vision Pro 空间网页工作区的开发底座。它在 Linux 环境中先定义
-              workspace、window、session 和 Mac Builder contracts，用浏览器模拟可移动网页窗口、终端、代码编辑器和远程浏览器会话；
-              当需要原生 visionOS 构建、模拟器测试、归档或签名时，再把请求交给受控的远程 Mac + Xcode 执行面。
+              Vision Web Workspace is a development foundation for Apple Vision Pro style spatial web workspaces. It defines
+              workspace, window, session, and Mac Builder contracts on Linux, validates movable web windows and remote development
+              surfaces in a browser simulator, and hands native visionOS build, simulator, archive, signing, artifact, and
+              `.xcresult` work to a controlled remote Mac execution plane.
             </p>
             <div class="value-grid" aria-label="Vision Web Workspace value points">
               <article>
                 <span class="badge">Simulate before Mac</span>
-                <h3>先在浏览器中验证空间工作区交互。</h3>
-                <p>Linux 开发环路覆盖窗口移动、缩放、聚焦、布局保存、终端和浏览器会话，不假装运行 Apple 官方模拟器。</p>
+                <h3>Validate spatial workspace interaction before native build access exists.</h3>
+                <p>The Linux loop covers move, resize, focus, layout persistence, terminal windows, code windows, and remote browser sessions.</p>
               </article>
               <article>
                 <span class="badge">Web windows as workspace</span>
-                <h3>每个窗口都是可控网页工作面。</h3>
-                <p>窗口可以承载 SSH terminal、code-server、文档、CI dashboard、日志或远程浏览器流，服务于真实开发流程。</p>
+                <h3>Each window is a controlled browser-addressable development surface.</h3>
+                <p>Windows can host SSH terminals, code-server, documentation, CI dashboards, logs, notebooks, or remote browser streams.</p>
               </article>
               <article>
                 <span class="badge">Governed Mac handoff</span>
-                <h3>原生构建交给明确的 Mac Builder 协议。</h3>
-                <p>Linux 侧提交 build/test/archive 请求；macOS worker 负责 XcodeGen、xcodebuild、simulator、artifact 和 `.xcresult`。</p>
+                <h3>Native Apple work moves through an explicit Mac Builder protocol.</h3>
+                <p>Linux submits build, test, and archive requests; macOS workers own XcodeGen, xcodebuild, simulator, artifacts, and `.xcresult` output.</p>
               </article>
             </div>
             <div class="hero-actions">
-              <a class="button primary" href="#problem">查看解决的问题</a>
-              <a class="button" href="#architecture">查看架构</a>
-              <a class="button" href="#operator-workflow">查看流程</a>
+              <a class="button primary" href="#problem">Problem</a>
+              <a class="button" href="#architecture">Architecture</a>
+              <a class="button" href="#operator-workflow">Workflow</a>
             </div>
           </div>
         </section>
@@ -74,20 +80,22 @@
         <section class="section split" id="problem">
           <div>
             <p class="eyebrow">Problem</p>
-            <h2>没有 Mac 时，visionOS 开发不能从原生构建开始。</h2>
+            <h2>Without a Mac, visionOS development cannot start from native compilation.</h2>
             <p>
-              Apple 官方 visionOS 编译、签名、模拟器和设备测试依赖 macOS、Xcode、visionOS SDK 和开发者账号。
-              但产品设计、窗口模型、远程开发界面和构建请求协议不应该等到 Mac 环境全部就绪后才开始。
+              Official visionOS compilation, signing, simulator execution, and device testing require macOS, Xcode, the visionOS SDK,
+              signing assets, and Apple account setup. Product interaction, window models, remote development surfaces, and build
+              request protocols can still be designed and validated before that native toolchain is available.
             </p>
             <p>
-              这个 repo 把可在 Linux 验证的部分前置：窗口状态、网页工作区、会话网关、workflow 检查和 Mac Builder 请求链路。
-              原生构建仍然由真实 Mac 承担，避免把浏览器模拟误写成 Apple 官方模拟器。
+              This repository moves the Linux-validatable work forward first: window state, web workspace interaction, session gateway,
+              workflow checks, and Mac Builder request handling. Native build and signing remain owned by real Mac infrastructure.
             </p>
           </div>
           <div class="command-box">
             <h3>Product risk it reduces</h3>
             <p>
-              在投入 EC2 Mac、MacBook、Xcode 签名和设备测试之前，先确认工作区交互、远程终端/浏览器体验和构建控制协议是否成立。
+              Before committing budget to EC2 Mac, local Mac hardware, signing, or device labs, the project can validate the workspace
+              interaction model and remote development workflow.
             </p>
           </div>
         </section>
@@ -95,32 +103,32 @@
         <section class="section" id="what-it-is">
           <div class="section-heading">
             <p class="eyebrow">What it is</p>
-            <h2>一个把空间网页工作区和 Mac 构建面分离的开发平台。</h2>
+            <h2>A development platform that separates spatial web workspace design from Apple-required native execution.</h2>
             <p>
-              系统把产品交互、session gateway 和 native build handoff 拆成可验证的层。这样 Linux 可以推进大部分工作流，
-              Mac 只承担 Apple 工具链必须承担的部分。
+              The system splits product interaction, session gateway, and native build handoff into explicit layers. Linux can drive
+              the simulator and contract loop; Mac hardware is reserved for the Apple toolchain responsibilities.
             </p>
           </div>
           <div class="feature-grid">
             <article>
               <span class="badge">Workspace contracts</span>
-              <h3>窗口和会话模型</h3>
-              <p>Shared contracts 定义 workspace、panel、layout、session 和 Mac build request，不把状态散落在 UI 中。</p>
+              <h3>Window and session model</h3>
+              <p>Shared contracts define workspace, panel, layout, session, and Mac build requests instead of hiding state inside UI components.</p>
             </article>
             <article>
               <span class="badge">Browser simulator</span>
-              <h3>浏览器空间工作区</h3>
-              <p>Web simulator 用普通浏览器验证 head-locked desktop、movable windows、terminal/code/browser/doc/log panels。</p>
+              <h3>Spatial workspace in a normal browser</h3>
+              <p>The simulator validates head-locked desktop behavior, movable windows, and terminal, code, browser, docs, and logs panels.</p>
             </article>
             <article>
               <span class="badge">Session gateway</span>
-              <h3>远程开发会话入口</h3>
-              <p>Gateway skeleton 统一创建 terminal、code 和 browser session，后续可接 ttyd、code-server、noVNC 或 WebRTC。</p>
+              <h3>Remote development session entrypoint</h3>
+              <p>The gateway skeleton centralizes terminal, code, and browser session creation for later ttyd, code-server, VNC, or WebRTC integration.</p>
             </article>
             <article>
               <span class="badge">Mac Builder handoff</span>
-              <h3>原生构建控制链</h3>
-              <p>Mock 和 agent packages 验证 build job、状态轮询、日志、artifact 和 `.xcresult` 返回格式。</p>
+              <h3>Native build control chain</h3>
+              <p>Mock and agent packages validate job submission, status polling, logs, artifacts, and `.xcresult` references.</p>
             </article>
           </div>
         </section>
@@ -128,26 +136,26 @@
         <section class="section" id="what-it-is-not">
           <div class="section-heading">
             <p class="eyebrow">What it is not</p>
-            <h2>边界直接写在开发流程里。</h2>
-            <p>这个 repo 不绕过 Apple 工具链，也不声称浏览器模拟等价于 Vision Pro 实机。</p>
+            <h2>The boundary is part of the workflow.</h2>
+            <p>This repository does not bypass Apple tooling or claim browser simulation is equivalent to a Vision Pro device.</p>
           </div>
           <div class="rule-grid">
-            <div>不是 Xcode、visionOS SDK、Apple 官方模拟器或签名系统的替代品。</div>
-            <div>不是 Enterprise API 或系统级 follow window entitlement 的替代方案。</div>
-            <div>不是生产远程运维平台；终端、浏览器和代码会话仍需要受控网关。</div>
-            <div>不是 App Store release authority；上传、签名和 TestFlight 仍属于后续 Mac/Apple workflow。</div>
-            <div>不把 SSH keys、GitHub tokens 或生产机器权限放进 Vision Pro client。</div>
-            <div>不声称 Linux 可以编译、安装或运行原生 visionOS app。</div>
+            <div>Not a replacement for Xcode, the visionOS SDK, Apple simulator, or signing systems.</div>
+            <div>Not a substitute for enterprise-only APIs or system-level follow-window entitlements.</div>
+            <div>Not a production remote operations platform; terminals, browsers, and code sessions still require a controlled gateway.</div>
+            <div>Not App Store release authority; upload, signing, TestFlight, and review remain later Apple workflows.</div>
+            <div>Does not put SSH keys, GitHub tokens, signing assets, or production access inside the Vision Pro client.</div>
+            <div>Does not claim Linux can compile, install, or run the native visionOS app.</div>
           </div>
         </section>
 
         <section class="section" id="architecture">
           <div class="section-heading">
             <p class="eyebrow">Architecture</p>
-            <h2>从 Linux simulator 到 Mac Builder 的控制链</h2>
+            <h2>Control chain from Linux simulator to Mac Builder</h2>
             <p>
-              本地开发验证窗口和会话语义；原生 build/test/archive 请求通过 adapter 发给 Mac Builder。
-              文档站只是 read-only 说明，真实边界仍在 contracts、workflow JSON、scripts 和 native source 中。
+              Local development validates window and session semantics. Native build, test, and archive requests move through the
+              Mac Builder adapter into a real macOS execution plane.
             </p>
           </div>
           <div class="flow" aria-label="Vision Web Workspace architecture chain">
@@ -199,21 +207,21 @@
         <section class="section" id="current-implementation">
           <div class="section-heading">
             <p class="eyebrow">Current implementation</p>
-            <h2>当前主干中的可验证落点</h2>
-            <p>这些能力都能在 repo 的 packages、apps、services、native source、scripts、tests 或 docs 中找到支撑。</p>
+            <h2>Verifiable surfaces in the current main branch</h2>
+            <p>These capabilities are backed by packages, apps, services, native source, scripts, tests, or docs in the repository.</p>
           </div>
           <div class="implementation-grid">
             <article>
               <h3>Workspace simulator</h3>
-              <p>Browser simulator covers movable, resizable and focusable web windows with terminal, code, browser, docs and logs panels.</p>
+              <p>Browser simulator covers movable, resizable, and focusable web windows with terminal, code, browser, docs, and logs panels.</p>
             </article>
             <article>
               <h3>Shared contracts</h3>
-              <p>Contracts package defines window, session, layout and Mac Builder request metadata used by simulator and workflow scripts.</p>
+              <p>Contracts package defines window, session, layout, and Mac Builder request metadata used by simulator and workflow scripts.</p>
             </article>
             <article>
               <h3>Session gateway</h3>
-              <p>Gateway skeleton exposes controlled session creation for terminal, code and browser windows.</p>
+              <p>Gateway skeleton exposes controlled session creation for terminal, code, and browser windows.</p>
             </article>
             <article>
               <h3>Native visionOS shell</h3>
@@ -225,15 +233,15 @@
             </article>
             <article>
               <h3>Mac Builder workflow</h3>
-              <p>Mock service, native agent package and e2e test validate build job submission, polling, logs and artifacts without Xcode on Linux.</p>
+              <p>Mock service, native agent package, and e2e test validate build job submission, polling, logs, and artifacts without Xcode on Linux.</p>
             </article>
             <article>
               <h3>AWS Mac plan</h3>
-              <p>Guarded scripts define budget checks, baseline deployment, worker quota/status and launch/teardown commands.</p>
+              <p>Guarded scripts define budget checks, baseline deployment, worker quota/status, and launch/teardown commands.</p>
             </article>
             <article>
               <h3>Workflow compliance</h3>
-              <p>Tool doctor, compliance check and visionOS workflow planner keep Linux, Mac Builder, device and release responsibilities separate.</p>
+              <p>Tool doctor, compliance check, and workflow planner keep Linux, Mac Builder, device, and release responsibilities separate.</p>
             </article>
           </div>
         </section>
@@ -241,14 +249,17 @@
         <section class="section split" id="operator-workflow">
           <div>
             <p class="eyebrow">Operator workflow</p>
-            <h2>本地开发和 Mac Builder 验证流程</h2>
-            <p>本地流程先验证 contracts、simulator 和 gateway；native build check 可以连接 mock builder，也可以在真实 Mac Builder 存在时发起远程请求。</p>
+            <h2>Local development and Mac Builder validation</h2>
+            <p>
+              The local loop validates contracts, simulator behavior, and gateway surfaces. Native build checks can target a mock builder
+              or a real Mac Builder when one exists.
+            </p>
             <ol class="steps">
-              <li>安装依赖：`pnpm install`。</li>
-              <li>启动 web simulator：`pnpm dev`。</li>
-              <li>运行 workflow 检查：`pnpm workflow:check`。</li>
-              <li>启动 mock builder：`pnpm dev:mac-builder:mock`。</li>
-              <li>提交 native build check：`VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check`。</li>
+              <li>Install dependencies: `pnpm install`.</li>
+              <li>Start the web simulator: `pnpm dev`.</li>
+              <li>Run workflow checks: `pnpm workflow:check`.</li>
+              <li>Start the mock builder: `pnpm dev:mac-builder:mock`.</li>
+              <li>Submit a native build check: `VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check`.</li>
             </ol>
           </div>
           <div class="command-box">
@@ -264,8 +275,8 @@ VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check</co
         <section class="section" id="reference-docs">
           <div class="section-heading">
             <p class="eyebrow">Reference docs</p>
-            <h2>后置参考信息</h2>
-            <p>这些链接用于定位真实工程 surface。docs-site 只提供 read-only 导览，不新增 authority。</p>
+            <h2>Implementation references</h2>
+            <p>These links point to real engineering surfaces. This docs site is a read-only guide and does not create authority.</p>
           </div>
           <div class="reference-grid">
             <article>
@@ -290,7 +301,7 @@ VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check</co
         <footer class="footer">
           <p>
             GitHub Pages deployment: this site is a read-only documentation surface. The authoritative implementation remains in contracts,
-            workflow JSON, scripts, services, native source and tests.
+            workflow JSON, scripts, services, native source, and tests.
           </p>
           <p>
             Source:
@@ -304,4 +315,3 @@ VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check</co
     <script src="./assets/app.js"></script>
   </body>
 </html>
-
