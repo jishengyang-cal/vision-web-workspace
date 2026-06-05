@@ -2,12 +2,6 @@
 
 Spatial web development workspace for Apple Vision Pro style workflows.
 
-## Documentation
-
-- GitHub Pages docs site: https://jishengyang-cal.github.io/vision-web-workspace/
-- Static site source: [`docs-site/`](docs-site/)
-- Architecture notes: [`docs/architecture.md`](docs/architecture.md)
-
 The first target is not a monitoring wall. It is a head-locked, movable web
 window desktop where each window can host a terminal, code editor, browser,
 documentation, CI dashboard, or remote app.
