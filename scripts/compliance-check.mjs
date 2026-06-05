@@ -59,10 +59,17 @@ const requiredScripts = [
   "aws:mac:cost-check",
   "aws:mac:ensure-budget",
   "aws:mac:deploy-baseline",
+  "aws:mac:xcode:plan",
+  "aws:mac:xcode:upload",
   "aws:mac:worker:plan",
   "aws:mac:worker:status",
+  "aws:mac:worker:cost-status",
+  "aws:mac:worker:quota-status",
   "aws:mac:worker:price-check",
   "aws:mac:worker:launch",
+  "aws:mac:worker:ssm-tunnel",
+  "aws:mac:worker:teardown",
+  "mac-builder:xcode:verify",
   "hooks:install"
 ];
 for (const script of requiredScripts) {
@@ -131,12 +138,15 @@ const requiredFiles = [
   "scripts/mac-builder-install-xcode.sh",
   "scripts/aws-mac-builder.mjs",
   "scripts/aws-mac-worker.mjs",
+  "scripts/aws-mac-xcode.mjs",
   "tests/mac-builder.e2e.mjs",
   "native/visionos/README.md",
   "native/visionos/project.yml",
   "native/visionos/VisionWebWorkspace/Info.plist",
   "native/visionos/VisionWebWorkspace/VisionWebWorkspaceApp.swift",
   "native/visionos/VisionWebWorkspace/Models/WorkspacePanelState.swift",
+  "native/visionos/VisionWebWorkspace/Models/GatewayModels.swift",
+  "native/visionos/VisionWebWorkspace/Models/GatewayClient.swift",
   "native/visionos/VisionWebWorkspace/Views/LauncherView.swift",
   "native/visionos/VisionWebWorkspace/Views/FollowWorkspaceImmersiveView.swift",
   "native/visionos/VisionWebWorkspace/Views/WorkspacePanelView.swift",
@@ -177,8 +187,26 @@ for (const id of ["mock-mac-builder", "mac-builder-e2e"]) {
 if (!phaseIds.has("aws-ec2-mac-builder-plan")) {
   violations.push("visionOS workflow is missing AWS EC2 Mac builder plan phase");
 }
+for (const id of ["aws-mac-worker-guard", "xcode-artifact-plan", "native-gateway-protocol"]) {
+  if (!phaseIds.has(id)) {
+    violations.push(`visionOS workflow is missing phase: ${id}`);
+  }
+}
 if (!phaseIds.has("app-store-release-plan")) {
   violations.push("visionOS workflow is missing App Store release plan phase");
+}
+const phaseById = new Map(workflow.phases.map((phase) => [phase.id, phase]));
+if (!phaseById.get("aws-mac-worker-guard")?.command?.includes("aws:mac:worker:quota-status")) {
+  violations.push("AWS Mac worker guard phase must check quota status");
+}
+if (!phaseById.get("aws-mac-worker-guard")?.command?.includes("aws:mac:worker:cost-status")) {
+  violations.push("AWS Mac worker guard phase must check cost status");
+}
+if (!phaseById.get("xcode-artifact-plan")?.capabilities?.includes("apple-account-required")) {
+  violations.push("Xcode artifact phase must require an Apple account boundary");
+}
+if (!phaseById.get("native-gateway-protocol")?.capabilities?.includes("linux-runnable")) {
+  violations.push("native Gateway protocol phase must remain Linux-runnable");
 }
 for (const phase of workflow.phases) {
   if (
@@ -231,6 +259,16 @@ if (/APPLE_ID|APP_STORE_PASSWORD|FASTLANE_SESSION/.test(macBuilderInstallXcode))
   violations.push("Xcode installer must not embed Apple account credential flow");
 }
 
+const awsMacXcode = readFileSync("scripts/aws-mac-xcode.mjs", "utf8");
+if (!awsMacXcode.includes("XCODE_XIP_PATH") || !awsMacXcode.includes("ArtifactBucketName")) {
+  violations.push("AWS Xcode artifact uploader must require explicit Xcode.xip and use baseline artifact bucket");
+}
+
+const macBuilderVerifyXcode = readFileSync("scripts/mac-builder-verify-xcode.sh", "utf8");
+if (!macBuilderVerifyXcode.includes("xcrun --sdk xrsimulator") || !macBuilderVerifyXcode.includes("visionOS")) {
+  violations.push("Mac Builder Xcode verifier must check xrsimulator and visionOS runtime");
+}
+
 const nativeProjectSpec = readFileSync("native/visionos/project.yml", "utf8");
 if (!nativeProjectSpec.includes("platform: visionOS")) {
   violations.push("native XcodeGen project must target visionOS");
@@ -260,6 +298,11 @@ if (!immersiveView.includes("RealityView") || !immersiveView.includes("panelAtta
 const browserWindow = readFileSync("native/visionos/VisionWebWorkspace/Views/BrowserWindowView.swift", "utf8");
 if (!browserWindow.includes("WKWebView")) {
   violations.push("native browser window must include WKWebView prototype surface");
+}
+
+const gatewayClient = readFileSync("native/visionos/VisionWebWorkspace/Models/GatewayClient.swift", "utf8");
+if (!gatewayClient.includes("fetchLayout") || !gatewayClient.includes("createSession") || !gatewayClient.includes("saveLayout")) {
+  violations.push("native Gateway client must support layout fetch/save and session creation");
 }
 
 const macBuilderInterface = JSON.parse(readFileSync("mcp/interfaces/mac-builder.json", "utf8"));
@@ -300,11 +343,28 @@ const awsWorkerScript = readFileSync("scripts/aws-mac-worker.mjs", "utf8");
 if (!awsWorkerScript.includes("AWS_MAC_WORKER_CONFIRM") || !awsWorkerScript.includes("allocate-24h-mac-host")) {
   violations.push("AWS Mac Worker launch script must require explicit 24h allocation confirmation");
 }
+if (!awsWorkerScript.includes("terminate-and-release-mac-host") || !awsWorkerScript.includes("assertHostMinimumElapsed")) {
+  violations.push("AWS Mac Worker teardown must require explicit confirmation and enforce 24h minimum");
+}
+if (!awsWorkerScript.includes("quota-status") || !awsWorkerScript.includes("L-B90B5B66")) {
+  violations.push("AWS Mac Worker must expose quota status for mac2-m2 hosts");
+}
+if (!awsWorkerScript.includes("AWS-StartPortForwardingSession")) {
+  violations.push("AWS Mac Worker must expose SSM tunnel workflow");
+}
 if (!awsWorkerScript.includes("getHourlyPriceUsd") || !awsWorkerScript.includes("assertCostAllowed")) {
   violations.push("AWS Mac Worker launch script must enforce price and cost guards");
 }
 if (!awsWorkerScript.includes("allocate-hosts") || !awsWorkerScript.includes("run-instances")) {
   violations.push("AWS Mac Worker launch script must own EC2 Mac allocation and launch actions");
+}
+
+const gateway = readFileSync("services/gateway/src/index.ts", "utf8");
+if (!gateway.includes("workspaces") || !gateway.includes("SaveWorkspaceLayoutRequest")) {
+  violations.push("gateway must expose native workspace layout APIs");
+}
+if (!gateway.includes('auditLevel: "lifecycle"')) {
+  violations.push("gateway terminal sessions must default to lifecycle audit level");
 }
 
 const releaseWorkflow = readFileSync("docs/workflows/app-store-release.md", "utf8");
@@ -337,11 +397,6 @@ if (!compose.includes("127.0.0.1:7681:7681") || !compose.includes("127.0.0.1:808
 }
 if (/0\.0\.0\.0:\d+:\d+/.test(compose)) {
   violations.push("developer services must not bind to 0.0.0.0 by default");
-}
-
-const gateway = readFileSync("services/gateway/src/index.ts", "utf8");
-if (!gateway.includes('auditLevel: "lifecycle"')) {
-  violations.push("gateway terminal sessions must default to lifecycle audit level");
 }
 
 if (violations.length > 0) {

@@ -79,6 +79,27 @@
       "produces": ["Dedicated Host plan", "Mac bootstrap plan", "AWS artifact/log plan", "teardown plan"]
     },
     {
+      "id": "aws-mac-worker-guard",
+      "title": "AWS Mac worker quota and cost guard",
+      "capabilities": ["mac-builder-required", "mcp-candidate"],
+      "command": "pnpm aws:mac:worker:quota-status && pnpm aws:mac:worker:cost-status",
+      "produces": ["Dedicated Host quota status", "current spend status", "24h minimum estimate", "live Mac resource inventory"]
+    },
+    {
+      "id": "xcode-artifact-plan",
+      "title": "Xcode artifact handoff plan",
+      "capabilities": ["mac-builder-required", "apple-account-required", "mcp-candidate"],
+      "command": "pnpm aws:mac:xcode:plan",
+      "produces": ["Xcode.xip upload instructions", "S3 artifact target", "Mac-side verification command"]
+    },
+    {
+      "id": "native-gateway-protocol",
+      "title": "Native visionOS Gateway protocol",
+      "capabilities": ["linux-runnable"],
+      "command": "pnpm test:e2e",
+      "produces": ["workspace layout API result", "session creation API result", "native client contract smoke result"]
+    },
+    {
       "id": "swift-source-intelligence",
       "title": "Swift source intelligence",
       "capabilities": ["optional-swift-toolchain"],

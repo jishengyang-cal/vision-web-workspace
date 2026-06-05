@@ -91,8 +91,14 @@ pnpm aws:mac:doctor
 pnpm aws:mac:ensure-budget
 pnpm aws:mac:cost-check
 pnpm aws:mac:deploy-baseline
+pnpm aws:mac:xcode:plan
+pnpm aws:mac:xcode:upload
 pnpm aws:mac:worker:plan
+pnpm aws:mac:worker:quota-status
+pnpm aws:mac:worker:cost-status
 pnpm aws:mac:worker:price-check
+pnpm aws:mac:worker:ssm-tunnel
+pnpm aws:mac:worker:teardown
 ```
 
 ### Release and upload tools
@@ -119,6 +125,9 @@ Release workflow: `docs/workflows/app-store-release.md`.
 - Install full Xcode from an explicitly provided `Xcode.xip` with
   `scripts/mac-builder-install-xcode.sh`; Apple account credentials do not go
   through this repository.
+- Verify the Mac Builder toolchain with `scripts/mac-builder-verify-xcode.sh`.
+- Upload a legally obtained `Xcode.xip` to the private artifact bucket with
+  `XCODE_XIP_PATH=/path/to/Xcode.xip pnpm aws:mac:xcode:upload`.
 - The current repository does not execute native Xcode builds locally without
   a verified builder URL. Use `pnpm visionos:mac-build:check` to verify that
   boundary.

@@ -159,6 +159,22 @@ Mac:
 pnpm aws:mac:plan
 pnpm aws:mac:doctor
 pnpm aws:mac:deploy-baseline
+pnpm aws:mac:worker:quota-status
+pnpm aws:mac:worker:cost-status
+pnpm aws:mac:worker:price-check
+```
+
+When AWS approves the EC2 Mac quota, launch and connect through SSM:
+
+```bash
+AWS_MAC_WORKER_CONFIRM=allocate-24h-mac-host pnpm aws:mac:worker:launch
+pnpm aws:mac:worker:ssm-tunnel
+```
+
+Release the worker only through the guarded teardown command:
+
+```bash
+AWS_MAC_WORKER_CONFIRM=terminate-and-release-mac-host pnpm aws:mac:worker:teardown
 ```
 
 For App Store/TestFlight release planning, signing checks, IPA validation, and

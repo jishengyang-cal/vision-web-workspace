@@ -1,15 +1,21 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import {
+  createDefaultLayout,
   isSessionKind,
   type CreateSessionRequest,
   type CreateSessionResponse,
+  type GetWorkspaceLayoutResponse,
+  type SaveWorkspaceLayoutRequest,
+  type SaveWorkspaceLayoutResponse,
   type RemoteSessionSpec,
-  type SessionKind
+  type SessionKind,
+  type WorkspaceLayoutSpec
 } from "@vision-web-workspace/contracts";
 
 const port = Number(process.env.PORT ?? 3001);
 const sessions = new Map<string, RemoteSessionSpec>();
+const layouts = new Map<string, WorkspaceLayoutSpec>();
 
 const defaultUrls: Record<SessionKind, string> = {
   terminal: process.env.TERMINAL_URL ?? "http://localhost:7681",
@@ -59,6 +65,26 @@ async function route(request: IncomingMessage, response: ServerResponse) {
     return;
   }
 
+  const layoutMatch = /^\/workspaces\/([^/]+)\/layout$/.exec(url.pathname);
+  if (request.method === "GET" && layoutMatch) {
+    const workspaceId = decodeURIComponent(layoutMatch[1] ?? "local-dev-workspace");
+    const payload: GetWorkspaceLayoutResponse = {
+      layout: getLayout(workspaceId)
+    };
+    sendJson(response, 200, payload);
+    return;
+  }
+
+  if (request.method === "PUT" && layoutMatch) {
+    const workspaceId = decodeURIComponent(layoutMatch[1] ?? "local-dev-workspace");
+    const body = await readJson<SaveWorkspaceLayoutRequest>(request);
+    const layout = normalizeLayout(workspaceId, body.layout);
+    layouts.set(workspaceId, layout);
+    const payload: SaveWorkspaceLayoutResponse = { layout };
+    sendJson(response, 200, payload);
+    return;
+  }
+
   if (request.method === "POST" && url.pathname === "/sessions") {
     const body = await readJson<CreateSessionRequest>(request);
     const created = createSession(body);
@@ -69,6 +95,29 @@ async function route(request: IncomingMessage, response: ServerResponse) {
   }
 
   sendJson(response, 404, { error: "Not found" });
+}
+
+function getLayout(workspaceId: string): WorkspaceLayoutSpec {
+  const existing = layouts.get(workspaceId);
+  if (existing) {
+    return existing;
+  }
+
+  const layout = createDefaultLayout({
+    terminalUrl: defaultUrls.terminal,
+    codeUrl: defaultUrls.code,
+    browserUrl: defaultUrls.browser
+  });
+  layouts.set(workspaceId, { ...layout, id: workspaceId });
+  return layouts.get(workspaceId)!;
+}
+
+function normalizeLayout(workspaceId: string, layout: WorkspaceLayoutSpec): WorkspaceLayoutSpec {
+  return {
+    ...layout,
+    id: workspaceId,
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function createSession(request: CreateSessionRequest): RemoteSessionSpec {
@@ -148,7 +197,7 @@ function sendHtml(response: ServerResponse, html: string) {
 
 function setCors(response: ServerResponse) {
   response.setHeader("access-control-allow-origin", "*");
-  response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
+  response.setHeader("access-control-allow-methods", "GET,POST,PUT,OPTIONS");
   response.setHeader("access-control-allow-headers", "content-type");
 }
 

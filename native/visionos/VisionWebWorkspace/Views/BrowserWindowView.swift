@@ -6,7 +6,7 @@ import WebKit
 #endif
 
 struct BrowserWindowView: View {
-    @Binding var window: WorkspaceWebWindow
+    @Binding var window: GatewayWindow
     @State private var address = ""
 
     var body: some View {
@@ -19,25 +19,25 @@ struct BrowserWindowView: View {
                 TextField("URL", text: $address)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit {
-                        window.urlString = normalizedAddress(address)
+                        window.url = normalizedAddress(address)
                     }
 
                 Button("Go") {
-                    window.urlString = normalizedAddress(address)
+                    window.url = normalizedAddress(address)
                 }
             }
             .padding(12)
 
-            WebSurfaceView(urlString: window.urlString)
+            WebSurfaceView(urlString: window.url)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 370, height: 650)
         .background(.thinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .onAppear {
-            address = window.urlString
+            address = window.url
         }
-        .onChange(of: window.urlString) { _, newValue in
+        .onChange(of: window.url) { _, newValue in
             address = newValue
         }
     }

@@ -116,12 +116,25 @@ export type RemoteSessionSpec =
 export interface CreateSessionRequest {
   workspaceId: string;
   kind: SessionKind;
+  windowId?: string;
   targetLabel?: string;
   requestedUrl?: string;
 }
 
 export interface CreateSessionResponse {
   session: RemoteSessionSpec;
+}
+
+export interface GetWorkspaceLayoutResponse {
+  layout: WorkspaceLayoutSpec;
+}
+
+export interface SaveWorkspaceLayoutRequest {
+  layout: WorkspaceLayoutSpec;
+}
+
+export interface SaveWorkspaceLayoutResponse {
+  layout: WorkspaceLayoutSpec;
 }
 
 export type MacBuildJobKind = "build" | "simulator-test" | "archive";

@@ -19,7 +19,9 @@
     "defaultUrl": "http://127.0.0.1:3201",
     "requiresPlatform": "macOS",
     "accessTokenEnv": "MAC_BUILDER_TOKEN",
-    "clientTokenEnv": "VISIONOS_MAC_BUILDER_TOKEN"
+    "clientTokenEnv": "VISIONOS_MAC_BUILDER_TOKEN",
+    "artifactStoreEnv": "MAC_BUILDER_ARTIFACT_S3_URI",
+    "gitAuthEnvs": ["MAC_BUILDER_GITHUB_TOKEN", "MAC_BUILDER_GIT_SSH_COMMAND"]
   },
   "awsEc2MacDeployment": {
     "workflowDocument": "docs/workflows/aws-ec2-mac-builder.md",
@@ -29,7 +31,10 @@
     "artifactStore": "S3 with SSE-KMS",
     "logStore": "CloudWatch Logs",
     "secretStore": "AWS Secrets Manager or SSM Parameter Store plus macOS keychain",
-    "defaultBuilderUrlEnv": "VISIONOS_MAC_BUILDER_URL"
+    "defaultBuilderUrlEnv": "VISIONOS_MAC_BUILDER_URL",
+    "quotaStatusCommand": "pnpm aws:mac:worker:quota-status",
+    "connectCommand": "pnpm aws:mac:worker:ssm-tunnel",
+    "teardownCommand": "AWS_MAC_WORKER_CONFIRM=terminate-and-release-mac-host pnpm aws:mac:worker:teardown"
   },
   "capabilities": [
     {

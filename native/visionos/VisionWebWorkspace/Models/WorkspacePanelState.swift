@@ -20,15 +20,3 @@ struct WorkspacePanelState: Equatable {
         scale: 1
     )
 }
-
-struct WorkspaceWebWindow: Identifiable, Equatable {
-    var id: String
-    var title: String
-    var urlString: String
-
-    static let defaults = [
-        WorkspaceWebWindow(id: "terminal", title: "Terminal", urlString: "https://example.com/terminal"),
-        WorkspaceWebWindow(id: "code", title: "Code", urlString: "https://example.com/code"),
-        WorkspaceWebWindow(id: "browser", title: "Browser", urlString: "https://developer.apple.com/visionos/")
-    ]
-}

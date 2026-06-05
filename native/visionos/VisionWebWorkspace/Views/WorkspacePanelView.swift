@@ -2,7 +2,7 @@ import SwiftUI
 
 struct WorkspacePanelView: View {
     @Binding var panelState: WorkspacePanelState
-    @State private var windows = WorkspaceWebWindow.defaults
+    @StateObject private var store = WorkspaceStore()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -11,15 +11,25 @@ struct WorkspacePanelView: View {
             Divider()
 
             HStack(spacing: 14) {
-                ForEach($windows) { $window in
-                    BrowserWindowView(window: $window)
+                ForEach(store.layout.windows) { window in
+                    BrowserWindowView(window: store.binding(for: window))
                 }
             }
             .padding(18)
+
+            if let errorMessage = store.errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 10)
+            }
         }
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .glassBackgroundEffect()
+        .onAppear {
+            store.load()
+        }
     }
 
     private var toolbar: some View {
@@ -27,6 +37,22 @@ struct WorkspacePanelView: View {
             Text("Workspace")
                 .font(.title3)
                 .fontWeight(.semibold)
+
+            Button("Terminal") {
+                store.open(kind: "terminal")
+            }
+
+            Button("Code") {
+                store.open(kind: "code")
+            }
+
+            Button("Browser") {
+                store.open(kind: "browser")
+            }
+
+            Button("Save") {
+                store.save()
+            }
 
             Spacer()
 

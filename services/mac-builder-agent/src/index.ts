@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID, createHash } from "node:crypto";
-import { createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { createReadStream, mkdirSync, statSync } from "node:fs";
+import { readdir, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import {
@@ -29,6 +29,7 @@ const port = Number(process.env.PORT ?? 3201);
 const workRoot = resolve(process.env.MAC_BUILDER_WORK_ROOT ?? ".run/mac-builder-agent/work");
 const artifactRoot = resolve(process.env.MAC_BUILDER_ARTIFACT_ROOT ?? ".run/mac-builder-agent/artifacts");
 const token = process.env.MAC_BUILDER_TOKEN;
+const artifactS3Uri = process.env.MAC_BUILDER_ARTIFACT_S3_URI?.replace(/\/$/, "");
 const jobs = new Map<string, StoredJob>();
 let activeJob: Promise<void> = Promise.resolve();
 
@@ -166,14 +167,16 @@ async function runJob(stored: StoredJob) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Native Mac builder job failed.";
     appendLog(job, "error", message);
-    failJob(job, message);
+    failJob(job, classifyFailure(message));
     await collectFailureLog(stored);
   }
 }
 
 async function cloneRepo(stored: StoredJob) {
   const { job, repoDir } = stored;
-  await runChecked(job, "git", ["clone", "--no-checkout", job.request.repoRef.remoteUrl, repoDir], stored.workDir);
+  await runChecked(job, "git", ["clone", "--no-checkout", repoCloneUrl(job.request.repoRef.remoteUrl), repoDir], stored.workDir, {
+    maskedArgs: ["clone", "--no-checkout", maskCloneUrl(job.request.repoRef.remoteUrl), repoDir]
+  });
   await runChecked(job, "git", ["checkout", job.request.repoRef.commitSha], repoDir);
 }
 
@@ -255,27 +258,46 @@ async function runNativeCommand(stored: StoredJob) {
   );
 }
 
-async function runChecked(job: MutableJob, command: string, args: string[], cwd: string) {
-  appendLog(job, "info", `$ ${command} ${args.join(" ")}`);
-  const output = await runProcess(command, args, cwd);
+async function runChecked(
+  job: MutableJob,
+  command: string,
+  args: string[],
+  cwd: string,
+  options: { maskedArgs?: string[] } = {}
+) {
+  appendLog(job, "info", `$ ${command} ${(options.maskedArgs ?? args).join(" ")}`);
+  const output = await runProcess(command, args, cwd, (line) => appendLog(job, "info", line));
   const logPath = join(artifactRoot, job.id, `${command}-${Date.now()}.log`);
   await writeFile(logPath, output);
-
-  for (const line of tail(output, 20)) {
-    appendLog(job, "info", line);
-  }
 }
 
-function runProcess(command: string, args: string[], cwd: string): Promise<string> {
+function runProcess(command: string, args: string[], cwd: string, onLine?: (line: string) => void): Promise<string> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, { cwd, env: process.env });
+    const child = spawn(command, args, { cwd, env: childEnv() });
     const chunks: Buffer[] = [];
+    let pending = "";
 
-    child.stdout.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-    child.stderr.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    const collect = (chunk: Buffer) => {
+      chunks.push(Buffer.from(chunk));
+      if (!onLine) {
+        return;
+      }
+      pending += chunk.toString("utf8");
+      const lines = pending.split(/\r?\n/);
+      pending = lines.pop() ?? "";
+      for (const line of lines.map((value) => value.trim()).filter(Boolean).slice(-12)) {
+        onLine(line);
+      }
+    };
+
+    child.stdout.on("data", collect);
+    child.stderr.on("data", collect);
     child.on("error", reject);
     child.on("close", (code) => {
       const output = Buffer.concat(chunks).toString("utf8");
+      if (pending.trim() && onLine) {
+        onLine(pending.trim());
+      }
       if (code === 0) {
         resolvePromise(output);
         return;
@@ -287,9 +309,13 @@ function runProcess(command: string, args: string[], cwd: string): Promise<strin
 
 async function collectArtifacts(stored: StoredJob) {
   const { job, artifactDir } = stored;
+  await packageDirectoryArtifacts(stored);
   const entries = await readdir(artifactDir, { withFileTypes: true });
 
   for (const entry of entries) {
+    if (entry.isDirectory()) {
+      continue;
+    }
     const path = join(artifactDir, entry.name);
     const type = artifactType(entry.name, job.kind);
     const artifact = await createArtifact(job.id, type, entry.name, path);
@@ -307,6 +333,22 @@ async function collectFailureLog(stored: StoredJob) {
   stored.job.artifacts.push(await createArtifact(stored.job.id, "log", "failure.log", logPath));
 }
 
+async function packageDirectoryArtifacts(stored: StoredJob) {
+  const entries = await readdir(stored.artifactDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    if (!entry.name.endsWith(".xcresult") && !entry.name.endsWith(".xcarchive")) {
+      continue;
+    }
+
+    const sourcePath = join(stored.artifactDir, entry.name);
+    const zipPath = join(stored.artifactDir, `${entry.name}.zip`);
+    await runChecked(stored.job, "ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", sourcePath, zipPath], stored.artifactDir);
+  }
+}
+
 async function createArtifact(
   jobId: string,
   type: MacBuildArtifact["type"],
@@ -314,11 +356,12 @@ async function createArtifact(
   path: string
 ): Promise<MacBuildArtifact> {
   const stats = statSync(path);
+  const uri = await publishArtifact(jobId, name, path);
   return {
     id: randomUUID(),
     type,
     name,
-    uri: artifactUri(jobId, name, path),
+    uri,
     createdAt: new Date().toISOString(),
     ...(stats.isFile() ? { sizeBytes: stats.size, sha256: await sha256(path) } : {})
   };
@@ -328,7 +371,13 @@ function artifactType(name: string, kind: MacBuildJobKind): MacBuildArtifact["ty
   if (name.endsWith(".xcresult")) {
     return "xcresult";
   }
+  if (name.endsWith(".xcresult.zip")) {
+    return "xcresult";
+  }
   if (name.endsWith(".xcarchive")) {
+    return "archive";
+  }
+  if (name.endsWith(".xcarchive.zip")) {
     return "archive";
   }
   if (name.endsWith(".ipa")) {
@@ -343,13 +392,63 @@ function artifactType(name: string, kind: MacBuildJobKind): MacBuildArtifact["ty
   return kind === "archive" ? "archive" : "build-products";
 }
 
-function artifactUri(jobId: string, name: string, path: string) {
+async function publishArtifact(jobId: string, name: string, path: string) {
+  if (artifactS3Uri) {
+    const destination = `${artifactS3Uri}/jobs/${jobId}/artifacts/${encodeURIComponent(name)}`;
+    await runProcess("aws", ["s3", "cp", path, destination], process.cwd());
+    return destination;
+  }
+
   const baseUrl = process.env.MAC_BUILDER_ARTIFACT_BASE_URL?.replace(/\/$/, "");
   if (baseUrl) {
     return `${baseUrl}/jobs/${encodeURIComponent(jobId)}/artifacts/${encodeURIComponent(name)}`;
   }
 
   return `file://${path}`;
+}
+
+function repoCloneUrl(remoteUrl: string) {
+  const token = process.env.MAC_BUILDER_GITHUB_TOKEN;
+  if (!token || !remoteUrl.includes("github.com")) {
+    return remoteUrl;
+  }
+
+  const match = /github\.com[:/]([^/]+\/[^/.]+)(?:\.git)?$/.exec(remoteUrl);
+  if (!match) {
+    return remoteUrl;
+  }
+  return `https://x-access-token:${token}@github.com/${match[1]}.git`;
+}
+
+function maskCloneUrl(remoteUrl: string) {
+  if (process.env.MAC_BUILDER_GITHUB_TOKEN && remoteUrl.includes("github.com")) {
+    return "https://x-access-token:***@github.com/<repo>.git";
+  }
+  return remoteUrl;
+}
+
+function childEnv() {
+  const env = { ...process.env };
+  if (process.env.MAC_BUILDER_GIT_SSH_COMMAND) {
+    env.GIT_SSH_COMMAND = process.env.MAC_BUILDER_GIT_SSH_COMMAND;
+  }
+  return env;
+}
+
+function classifyFailure(message: string) {
+  if (/xcodebuild.*ENOENT|xcodebuild: command not found|unable to find utility "xcodebuild"/i.test(message)) {
+    return "xcode-not-installed";
+  }
+  if (/xrsimulator|visionOS.*not installed|SDK.*not found/i.test(message)) {
+    return "visionos-sdk-missing";
+  }
+  if (/CodeSign|Signing|provisioning profile|Development Team/i.test(message)) {
+    return "signing-configuration-failed";
+  }
+  if (/git.*Authentication|Permission denied|repository.*not found/i.test(message)) {
+    return "repository-auth-failed";
+  }
+  return message;
 }
 
 async function sha256(path: string) {

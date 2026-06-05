@@ -13,11 +13,23 @@ switch (command) {
   case "status":
     printStatus();
     break;
+  case "cost-status":
+    printCostStatus();
+    break;
+  case "quota-status":
+    printQuotaStatus();
+    break;
   case "price-check":
     runPriceCheck();
     break;
   case "launch":
     launchWorker();
+    break;
+  case "ssm-tunnel":
+    startSsmTunnel();
+    break;
+  case "teardown":
+    teardownWorker();
     break;
   case "help":
   default:
@@ -45,6 +57,9 @@ function loadConfig() {
     availabilityZone: process.env.AWS_MAC_WORKER_AZ ?? "",
     maxLaunchCostUsd: Number(process.env.AWS_MAC_WORKER_MAX_LAUNCH_COST_USD ?? 100),
     hourlyPriceUsd: process.env.AWS_MAC_WORKER_HOURLY_USD ? Number(process.env.AWS_MAC_WORKER_HOURLY_USD) : null,
+    localTunnelPort: Number(process.env.AWS_MAC_WORKER_LOCAL_TUNNEL_PORT ?? 3201),
+    remoteAgentPort: Number(process.env.AWS_MAC_WORKER_REMOTE_AGENT_PORT ?? 3201),
+    quotaCode: process.env.AWS_MAC_WORKER_QUOTA_CODE ?? "",
     securityGroupName:
       process.env.AWS_MAC_WORKER_SECURITY_GROUP_NAME ?? "vision-web-workspace-mac-builder-dev",
     hostResourceGroupArn: process.env.AWS_MAC_WORKER_HOST_RESOURCE_GROUP_ARN ?? ""
@@ -73,6 +88,11 @@ function printPlan() {
   console.log("- one private security group with no inbound rules");
   console.log("");
   console.log("launch does not install full Xcode; use scripts/mac-builder-install-xcode.sh with Xcode.xip.");
+  console.log("");
+  console.log("safety commands:");
+  console.log("- pnpm aws:mac:worker:quota-status");
+  console.log("- pnpm aws:mac:worker:cost-status");
+  console.log("- AWS_MAC_WORKER_CONFIRM=terminate-and-release-mac-host pnpm aws:mac:worker:teardown");
 }
 
 function printStatus() {
@@ -87,6 +107,73 @@ function printStatus() {
   console.log(`mac instances: ${instances.length}`);
   for (const instance of instances) {
     console.log(`- instance ${instance.InstanceId}: ${instance.State?.Name}, ${instance.InstanceType}, ${instance.PrivateIpAddress ?? "no-private-ip"}`);
+  }
+}
+
+function printCostStatus() {
+  assertAwsReady();
+  const monthCost = getMonthToDateCost();
+  const price = getHourlyPriceUsd();
+  const estimate = price * 24;
+  const identity = getIdentity();
+  const budget = findBudget(identity.Account, config.budgetName);
+  const hosts = listMacDedicatedHosts();
+  const instances = listMacInstances();
+
+  console.log("AWS EC2 Mac Worker cost status");
+  console.log(`account: ${mask(identity.Account)}`);
+  console.log(`region: ${config.region}`);
+  console.log(`month-to-date unblended cost: ${monthCost.toFixed(2)} USD`);
+  console.log(`budget: ${budget ? `${budget.BudgetLimit?.Amount ?? "unknown"} ${budget.BudgetLimit?.Unit ?? "USD"}` : "missing"}`);
+  console.log(`hourly host estimate: ${price.toFixed(4)} USD`);
+  console.log(`24h minimum estimate: ${estimate.toFixed(2)} USD`);
+  console.log(`mac dedicated hosts: ${hosts.length}`);
+  console.log(`mac instances: ${instances.length}`);
+}
+
+function printQuotaStatus() {
+  assertAwsReady();
+  const quotaCode = quotaCodeForInstanceType(config.instanceType);
+  const quota = awsJson([
+    "service-quotas",
+    "get-service-quota",
+    "--service-code",
+    "ec2",
+    "--quota-code",
+    quotaCode
+  ]);
+  const requests = awsJson(
+    [
+      "service-quotas",
+      "list-requested-service-quota-change-history-by-quota",
+      "--service-code",
+      "ec2",
+      "--quota-code",
+      quotaCode,
+      "--max-results",
+      "5"
+    ],
+    { allowFail: true }
+  );
+
+  console.log("AWS EC2 Mac Worker quota status");
+  console.log(`instance type: ${config.instanceType}`);
+  console.log(`quota code: ${quotaCode}`);
+  console.log(`quota name: ${quota.Quota?.QuotaName ?? "unknown"}`);
+  console.log(`current value: ${quota.Quota?.Value ?? "unknown"}`);
+  console.log(`adjustable: ${quota.Quota?.Adjustable ?? "unknown"}`);
+
+  const history = requests.RequestedQuotas ?? [];
+  if (history.length === 0) {
+    console.log("recent requests: none");
+    return;
+  }
+
+  console.log("recent requests:");
+  for (const request of history) {
+    console.log(
+      `- ${request.Id}: desired=${request.DesiredValue}, status=${request.Status}, case=${request.CaseId ?? "none"}, updated=${request.LastUpdated ?? request.Created}`
+    );
   }
 }
 
@@ -195,6 +282,67 @@ function launchWorker() {
   console.log("Use AWS Systems Manager Session Manager after the instance becomes managed.");
 }
 
+function startSsmTunnel() {
+  assertAwsReady();
+  const instanceId = process.env.AWS_MAC_WORKER_INSTANCE_ID ?? firstMacInstanceId();
+  if (!instanceId) {
+    throw new Error("No Mac instance found. Set AWS_MAC_WORKER_INSTANCE_ID or launch the worker first.");
+  }
+
+  console.log(`Starting SSM tunnel to ${instanceId}: localhost:${config.localTunnelPort} -> 127.0.0.1:${config.remoteAgentPort}`);
+  console.log(`Use VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:${config.localTunnelPort}`);
+
+  aws(
+    [
+      "ssm",
+      "start-session",
+      "--target",
+      instanceId,
+      "--document-name",
+      "AWS-StartPortForwardingSession",
+      "--parameters",
+      `portNumber=${config.remoteAgentPort},localPortNumber=${config.localTunnelPort}`
+    ],
+    { capture: false }
+  );
+}
+
+function teardownWorker() {
+  assertAwsReady();
+  if (process.env.AWS_MAC_WORKER_CONFIRM !== "terminate-and-release-mac-host") {
+    throw new Error("Refusing teardown: set AWS_MAC_WORKER_CONFIRM=terminate-and-release-mac-host");
+  }
+
+  const hosts = listMacDedicatedHosts();
+  const instances = listMacInstances();
+
+  if (hosts.length === 0 && instances.length === 0) {
+    console.log("No Mac worker resources found.");
+    return;
+  }
+
+  for (const host of hosts) {
+    assertHostMinimumElapsed(host);
+  }
+
+  const instanceIds = instances.map((instance) => instance.InstanceId).filter(Boolean);
+  if (instanceIds.length > 0) {
+    console.log(`Terminating Mac instances: ${instanceIds.join(", ")}`);
+    aws(["ec2", "terminate-instances", "--instance-ids", ...instanceIds]);
+    if (process.env.AWS_MAC_WORKER_WAIT_FOR_TERMINATION !== "false") {
+      aws(["ec2", "wait", "instance-terminated", "--instance-ids", ...instanceIds]);
+    }
+  }
+
+  const hostIds = hosts.map((host) => host.HostId).filter(Boolean);
+  if (hostIds.length > 0) {
+    console.log(`Releasing Mac Dedicated Hosts: ${hostIds.join(", ")}`);
+    aws(["ec2", "release-hosts", "--host-ids", ...hostIds]);
+  }
+
+  console.log("Mac worker teardown submitted.");
+}
+
 function assertCostAllowed(monthCost, launchEstimate) {
   if (launchEstimate > config.maxLaunchCostUsd) {
     throw new Error(`Cost guard blocked launch: 24h estimate ${launchEstimate.toFixed(2)} > max ${config.maxLaunchCostUsd.toFixed(2)}`);
@@ -204,6 +352,31 @@ function assertCostAllowed(monthCost, launchEstimate) {
       `Cost guard blocked launch: ${monthCost.toFixed(2)} current + ${launchEstimate.toFixed(2)} estimate > ${config.monthlyBudgetLimitUsd.toFixed(2)} budget`
     );
   }
+}
+
+function assertHostMinimumElapsed(host) {
+  const allocatedAt = Date.parse(host.AllocationTime ?? host.CreateTime ?? "");
+  if (Number.isNaN(allocatedAt)) {
+    throw new Error(`Cannot determine allocation time for host ${host.HostId}; refusing teardown without explicit force.`);
+  }
+
+  const earliestRelease = allocatedAt + 1000 * 60 * 60 * 24;
+  if (Date.now() >= earliestRelease) {
+    return;
+  }
+
+  const earliest = new Date(earliestRelease).toISOString();
+  if (process.env.AWS_MAC_WORKER_ALLOW_EARLY_INSTANCE_TERMINATION === "true") {
+    throw new Error(
+      `Host ${host.HostId} is still inside the 24-hour minimum period. Earliest release: ${earliest}. Terminate manually only if you accept continued host billing.`
+    );
+  }
+
+  throw new Error(`Refusing teardown before EC2 Mac 24-hour minimum. Host ${host.HostId} can be released after ${earliest}.`);
+}
+
+function firstMacInstanceId() {
+  return listMacInstances().find((instance) => ["pending", "running", "stopped"].includes(instance.State?.Name))?.InstanceId ?? null;
 }
 
 function getHourlyPriceUsd() {
@@ -352,6 +525,10 @@ function getBaselineOutputs() {
   return Object.fromEntries(outputs.map((output) => [output.OutputKey, output.OutputValue]));
 }
 
+function getIdentity() {
+  return awsJson(["sts", "get-caller-identity"]);
+}
+
 function listMacDedicatedHosts() {
   const payload = awsJson(["ec2", "describe-hosts"], { allowFail: true });
   const hosts = payload?.Hosts ?? [];
@@ -396,6 +573,15 @@ function getMonthToDateCost() {
   return amount ? Number(amount) : 0;
 }
 
+function findBudget(accountId, budgetName) {
+  const payload = awsJson(["budgets", "describe-budgets", "--account-id", accountId], {
+    region: "us-east-1",
+    allowFail: true
+  });
+
+  return payload?.Budgets?.find((budget) => budget.BudgetName === budgetName) ?? null;
+}
+
 function regionLocation(region) {
   const locations = {
     "us-east-1": "US East (N. Virginia)",
@@ -414,6 +600,27 @@ function regionUsagePrefix(region) {
     "us-west-2": "USW2"
   };
   return prefixes[region] ?? "USE2";
+}
+
+function quotaCodeForInstanceType(instanceType) {
+  if (config.quotaCode) {
+    return config.quotaCode;
+  }
+
+  const hostFamily = hostFamilyFromInstanceType(instanceType);
+  const quotaCodes = {
+    "mac1": "L-A8448DC5",
+    "mac2": "L-5D8DADF5",
+    "mac2-m2": "L-B90B5B66",
+    "mac2-m2pro": "L-14F120D1",
+    "mac-m4": "L-2CBA8B92",
+    "mac-m4pro": "L-6919FC30"
+  };
+  const quotaCode = quotaCodes[hostFamily];
+  if (!quotaCode) {
+    throw new Error(`Unknown quota code for ${hostFamily}. Set AWS_MAC_WORKER_QUOTA_CODE.`);
+  }
+  return quotaCode;
 }
 
 function tagSpec(resourceType, extraTags) {
@@ -490,12 +697,24 @@ function writeRuntimeJson(filename, payload) {
   writeFileSync(path, JSON.stringify(payload, null, 2));
 }
 
+function mask(value) {
+  const raw = String(value ?? "");
+  if (raw.length <= 4) {
+    return "****";
+  }
+  return `${"*".repeat(Math.max(0, raw.length - 4))}${raw.slice(-4)}`;
+}
+
 function printHelp() {
   console.log("Usage: node scripts/aws-mac-worker.mjs <command>");
   console.log("");
   console.log("Commands:");
   console.log("  plan         Print the EC2 Mac worker launch plan.");
   console.log("  status       Print existing Mac hosts and instances.");
+  console.log("  cost-status  Print current spend, budget, estimates, and live resources.");
+  console.log("  quota-status Print current Mac Dedicated Host quota and recent requests.");
   console.log("  price-check  Resolve AWS Pricing API estimate and enforce cost guard.");
   console.log("  launch       Allocate one EC2 Mac Dedicated Host and launch one instance.");
+  console.log("  ssm-tunnel   Start an SSM port-forwarding session to the builder agent.");
+  console.log("  teardown     Terminate Mac instance and release Dedicated Host after 24h minimum.");
 }

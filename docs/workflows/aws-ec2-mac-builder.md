@@ -66,6 +66,8 @@ The real worker launch flow is intentionally separated:
 
 ```bash
 pnpm aws:mac:worker:plan
+pnpm aws:mac:worker:quota-status
+pnpm aws:mac:worker:cost-status
 pnpm aws:mac:worker:price-check
 pnpm aws:mac:worker:status
 AWS_MAC_WORKER_CONFIRM=allocate-24h-mac-host pnpm aws:mac:worker:launch
@@ -73,6 +75,15 @@ AWS_MAC_WORKER_CONFIRM=allocate-24h-mac-host pnpm aws:mac:worker:launch
 
 The launch command allocates one Dedicated Host and starts one Mac instance
 only after the pricing estimate and monthly budget guard pass.
+
+Teardown is explicit and guarded:
+
+```bash
+AWS_MAC_WORKER_CONFIRM=terminate-and-release-mac-host pnpm aws:mac:worker:teardown
+```
+
+The teardown command refuses to release an EC2 Mac Dedicated Host before the
+24-hour minimum allocation period has elapsed.
 
 ### Accounts and IAM
 
@@ -179,9 +190,13 @@ Full Xcode is installed only from an Apple-provided `Xcode.xip` that you place
 on the host or in the private artifact bucket:
 
 ```bash
+XCODE_XIP_PATH=/path/to/Xcode.xip pnpm aws:mac:xcode:upload
+
 XCODE_XIP_PATH=/path/to/Xcode.xip scripts/mac-builder-install-xcode.sh
 # or
 XCODE_S3_URI=s3://<artifact-bucket>/toolchains/Xcode.xip scripts/mac-builder-install-xcode.sh
+
+scripts/mac-builder-verify-xcode.sh
 ```
 
 The native agent package is `@vision-web-workspace/mac-builder-agent`. It
@@ -201,7 +216,9 @@ VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3101 pnpm visionos:mac-build:check
 AWS production adapter:
 
 ```bash
-VISIONOS_MAC_BUILDER_URL=https://mac-builder.internal.example.com \
+pnpm aws:mac:worker:ssm-tunnel
+
+VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3201 \
 VISIONOS_MAC_BUILDER_TOKEN="$MAC_BUILDER_CLIENT_TOKEN" \
 VISIONOS_SCHEME=VisionWebWorkspace \
 VISIONOS_CONFIGURATION=Debug \
@@ -222,8 +239,9 @@ Request lifecycle:
 2. Builder API validates policy and creates `MacBuildJob`.
 3. Worker clones/fetches the exact commit SHA.
 4. Worker runs the requested native operation.
-5. Worker streams logs to CloudWatch and final job logs.
-6. Worker uploads artifacts and `.xcresult` to S3.
+5. Worker records segmented command logs in the job.
+6. Worker compresses `.xcresult`/`.xcarchive` directories and uploads artifacts
+   to S3 when `MAC_BUILDER_ARTIFACT_S3_URI` is set.
 7. Builder API returns job state and scoped artifact refs.
 
 ## Build job commands

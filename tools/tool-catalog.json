@@ -113,14 +113,21 @@
       "name": "AWS Systems Manager Session Manager",
       "mode": "optional-cloud-toolchain",
       "command": "aws",
-      "workflow": ["future-private-mac-builder-access"]
+      "workflow": ["private-mac-builder-access", "ssm-port-forwarding"]
     },
     {
       "id": "aws-s3",
       "name": "Amazon S3",
       "mode": "cloud-artifact-store",
       "command": "aws",
-      "workflow": ["future-build-artifacts", "future-xcresult-storage"]
+      "workflow": ["future-build-artifacts", "future-xcresult-storage", "xcode-xip-artifact"]
+    },
+    {
+      "id": "aws-service-quotas",
+      "name": "AWS Service Quotas",
+      "mode": "optional-cloud-toolchain",
+      "command": "aws",
+      "workflow": ["mac-dedicated-host-quota", "quota-status"]
     },
     {
       "id": "aws-cloudwatch",
