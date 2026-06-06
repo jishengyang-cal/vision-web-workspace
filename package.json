@@ -37,6 +37,7 @@
     "aws:mac:worker:cost-status": "node scripts/aws-mac-worker.mjs cost-status",
     "aws:mac:worker:quota-status": "node scripts/aws-mac-worker.mjs quota-status",
     "aws:mac:worker:price-check": "node scripts/aws-mac-worker.mjs price-check",
+    "aws:mac:worker:prelaunch": "node scripts/aws-mac-prelaunch.mjs",
     "aws:mac:worker:launch": "node scripts/aws-mac-worker.mjs launch",
     "aws:mac:worker:ssm-tunnel": "node scripts/aws-mac-worker.mjs ssm-tunnel",
     "aws:mac:worker:teardown": "node scripts/aws-mac-worker.mjs teardown",

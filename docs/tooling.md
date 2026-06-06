@@ -94,6 +94,7 @@ pnpm aws:mac:deploy-baseline
 pnpm aws:mac:xcode:plan
 pnpm aws:mac:xcode:upload
 pnpm aws:mac:worker:plan
+pnpm aws:mac:worker:prelaunch
 pnpm aws:mac:worker:quota-status
 pnpm aws:mac:worker:cost-status
 pnpm aws:mac:worker:price-check

@@ -66,6 +66,7 @@ The real worker launch flow is intentionally separated:
 
 ```bash
 pnpm aws:mac:worker:plan
+pnpm aws:mac:worker:prelaunch
 pnpm aws:mac:worker:quota-status
 pnpm aws:mac:worker:cost-status
 pnpm aws:mac:worker:price-check
@@ -75,6 +76,50 @@ AWS_MAC_WORKER_CONFIRM=allocate-24h-mac-host pnpm aws:mac:worker:launch
 
 The launch command allocates one Dedicated Host and starts one Mac instance
 only after the pricing estimate and monthly budget guard pass.
+
+## Prelaunch checklist
+
+Run this checklist after AWS approves the EC2 Mac quota and before allocating
+the first host:
+
+```bash
+AWS_PROFILE=vision-mac-builder AWS_REGION=us-east-2 pnpm aws:mac:worker:prelaunch
+```
+
+The checklist is read-only. It does not allocate a Dedicated Host, launch an
+instance, import Apple credentials, or upload signing material. It stops at the
+first failed gate and prints the next corrective action.
+
+Required gates:
+
+1. Local launch plan: confirm region, instance type, macOS AMI family, the
+   24-hour EC2 Mac host minimum, and the guarded launch command.
+2. AWS identity and region: confirm the SSO profile, account identity, and
+   `us-east-2` region access.
+3. Existing Mac resource inventory: confirm there is no already-allocated EC2
+   Mac Dedicated Host or running/stopped Mac instance in the region.
+4. EC2 Mac quota status: confirm the approved quota value is visible through
+   Service Quotas for the selected instance family.
+5. Monthly budget and live cost status: confirm the configured 100 USD budget
+   guard, month-to-date spend, and the 24-hour minimum estimate.
+6. Enforced price guard: fail if current spend plus the 24-hour Mac host
+   estimate would exceed the budget guard.
+7. Required baseline budget guard: confirm the AWS Budget exists and no Mac
+   host is already allocated.
+8. Baseline stack and Xcode artifact target: confirm the CloudFormation outputs
+   for the instance profile, S3 artifact bucket, KMS key, and log group.
+
+If the checklist fails because the AWS SSO token is expired, refresh it first:
+
+```bash
+AWS_PROFILE=vision-mac-builder aws sso login --profile vision-mac-builder --no-browser
+```
+
+If it fails because the baseline stack or budget is missing, run:
+
+```bash
+AWS_PROFILE=vision-mac-builder AWS_REGION=us-east-2 pnpm aws:mac:deploy-baseline
+```
 
 Teardown is explicit and guarded:
 

@@ -164,6 +164,7 @@ Mac:
 pnpm aws:mac:plan
 pnpm aws:mac:doctor
 pnpm aws:mac:deploy-baseline
+pnpm aws:mac:worker:prelaunch
 pnpm aws:mac:worker:quota-status
 pnpm aws:mac:worker:cost-status
 pnpm aws:mac:worker:price-check
