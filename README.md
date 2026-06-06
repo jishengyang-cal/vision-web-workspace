@@ -114,6 +114,7 @@ BROWSER_URL=https://example.com
 - Tool doctor and workflow compliance checks.
 - Docker-backed local terminal and code-server services.
 - Native visionOS SwiftUI/RealityKit source skeleton and XcodeGen project spec.
+- Full immersive office and water lounge RealityKit environment prototypes.
 - Structured Mac Builder request metadata for the native project path.
 - Native Mac Builder Agent package for the real macOS execution plane.
 
@@ -151,6 +152,10 @@ VISIONOS_MAC_BUILDER_URL=http://<mac-builder-host>:3201 pnpm visionos:mac-build:
 
 For a real remote Mac execution plane, use the AWS EC2 Mac builder workflow in
 `docs/workflows/aws-ec2-mac-builder.md`.
+
+For the office and water lounge environment reconstruction, use
+`docs/workflows/immersive-environments.md`. The current native app exposes the
+original mixed web workspace plus two full immersive scene entries.
 
 AWS baseline setup is guarded by a 100 USD budget cap and does not start EC2
 Mac:

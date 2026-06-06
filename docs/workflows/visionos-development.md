@@ -37,6 +37,7 @@ pretend to run Apple's native visionOS toolchain.
 | Mock Mac builder | linux-runnable, mcp-candidate | `pnpm dev:mac-builder:mock` | Simulates Mac builder job lifecycle without running Xcode. |
 | Mac builder e2e | linux-runnable, mcp-candidate | `pnpm test:mac-builder` | Verifies build job request, polling, logs, artifacts, `.xcresult`, and failure handling. |
 | AWS EC2 Mac builder plan | mac-builder-required, mcp-candidate | documented workflow | Defines Dedicated Host, bootstrap, artifact, audit, and teardown workflow. |
+| Immersive environment reconstruction | mac-builder-required, device-required, mcp-candidate | documented workflow | Rebuilds the office and water lounge reference scenes as full immersive RealityKit environments. |
 | Swift source intelligence | optional-swift-toolchain | none yet | Future SourceKit-LSP and swift-format checks when Swift exists on Linux. |
 | Native project generation | mac-builder-required | `pnpm visionos:native:plan` | Prints the native project metadata and Mac Builder commands without executing Mac tooling locally. |
 | Native build | mac-builder-required | `pnpm visionos:mac-build:check` | Checks that native build must be delegated to Mac builder. |
@@ -67,6 +68,10 @@ The native source root is `native/visionos`. It contains:
   `ImmersiveSpace`.
 - `FollowWorkspaceImmersiveView.swift`: RealityKit attachment host for the
   workspace panel.
+- `ImmersiveEnvironmentSceneFactory.swift`: procedural room blockouts for the
+  office and water lounge environments.
+- `ImmersiveEnvironmentView.swift`: full immersive environment host that keeps
+  the Gateway-backed web workspace panel available inside each room.
 - `BrowserWindowView.swift`: `WKWebView` prototype surface for webpage windows.
 
 The Mac Builder request includes this structured project block:
@@ -101,6 +106,11 @@ path into three planes:
 
 AWS EC2 Mac is the preferred remote Mac builder deployment target for the Mac
 builder plane. See `docs/workflows/aws-ec2-mac-builder.md`.
+
+The office and water lounge environment reconstruction is defined in
+`docs/workflows/immersive-environments.md`. Its first pass is procedural
+RealityKit source; later passes should replace stable props/materials with
+USDZ or Reality Composer Pro assets on the Mac Builder.
 
 Release and TestFlight automation is defined in
 `docs/workflows/app-store-release.md`. AppUploader-style tools are treated as

@@ -2,9 +2,27 @@ import Foundation
 
 enum WorkspaceConstants {
     static let immersiveSpaceID = "WorkspaceImmersiveSpace"
+    static let officeEnvironmentSpaceID = "OfficeEnvironmentSpace"
+    static let loungeEnvironmentSpaceID = "LoungeEnvironmentSpace"
     static let rootEntityName = "HeadLockedWorkspaceRoot"
     static let panelAttachmentID = "workspace-panel"
     static let panelEntityName = "WorkspacePanel"
+}
+
+enum ImmersiveEnvironmentKind: String, CaseIterable, Identifiable {
+    case office
+    case lounge
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .office:
+            "Office"
+        case .lounge:
+            "Water Lounge"
+        }
+    }
 }
 
 struct WorkspacePanelState: Equatable {

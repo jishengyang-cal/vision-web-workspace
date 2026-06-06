@@ -100,6 +100,13 @@
       "produces": ["workspace layout API result", "session creation API result", "native client contract smoke result"]
     },
     {
+      "id": "immersive-environment-reconstruction",
+      "title": "Office and water lounge immersive environment reconstruction",
+      "capabilities": ["mac-builder-required", "device-required", "mcp-candidate"],
+      "command": null,
+      "produces": ["RealityKit room blockout", "full immersive scene build", "simulator screenshots", "device comfort and performance report"]
+    },
+    {
       "id": "swift-source-intelligence",
       "title": "Swift source intelligence",
       "capabilities": ["optional-swift-toolchain"],

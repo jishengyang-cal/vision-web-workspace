@@ -118,6 +118,7 @@ if (!architecture.includes("does not give the Vision Pro client direct access"))
 const requiredFiles = [
   "docs/workflows/visionos-development.md",
   "docs/workflows/aws-ec2-mac-builder.md",
+  "docs/workflows/immersive-environments.md",
   "docs/workflows/app-store-release.md",
   "docs/workflows/mcp-and-hooks.md",
   "infra/aws-mac-builder/config.example.json",
@@ -145,10 +146,12 @@ const requiredFiles = [
   "native/visionos/VisionWebWorkspace/Info.plist",
   "native/visionos/VisionWebWorkspace/VisionWebWorkspaceApp.swift",
   "native/visionos/VisionWebWorkspace/Models/WorkspacePanelState.swift",
+  "native/visionos/VisionWebWorkspace/Models/ImmersiveEnvironmentSceneFactory.swift",
   "native/visionos/VisionWebWorkspace/Models/GatewayModels.swift",
   "native/visionos/VisionWebWorkspace/Models/GatewayClient.swift",
   "native/visionos/VisionWebWorkspace/Views/LauncherView.swift",
   "native/visionos/VisionWebWorkspace/Views/FollowWorkspaceImmersiveView.swift",
+  "native/visionos/VisionWebWorkspace/Views/ImmersiveEnvironmentView.swift",
   "native/visionos/VisionWebWorkspace/Views/WorkspacePanelView.swift",
   "native/visionos/VisionWebWorkspace/Views/BrowserWindowView.swift",
   ".githooks/pre-commit",
@@ -191,6 +194,9 @@ for (const id of ["aws-mac-worker-guard", "xcode-artifact-plan", "native-gateway
   if (!phaseIds.has(id)) {
     violations.push(`visionOS workflow is missing phase: ${id}`);
   }
+}
+if (!phaseIds.has("immersive-environment-reconstruction")) {
+  violations.push("visionOS workflow is missing immersive environment reconstruction phase");
 }
 if (!phaseIds.has("app-store-release-plan")) {
   violations.push("visionOS workflow is missing App Store release plan phase");
@@ -284,6 +290,9 @@ const nativeApp = readFileSync("native/visionos/VisionWebWorkspace/VisionWebWork
 if (!nativeApp.includes("ImmersiveSpace") || !nativeApp.includes(".mixed")) {
   violations.push("native app must open a mixed ImmersiveSpace");
 }
+if (!nativeApp.includes("officeEnvironmentSpaceID") || !nativeApp.includes("loungeEnvironmentSpaceID") || !nativeApp.includes(".full")) {
+  violations.push("native app must expose full immersive office and water lounge spaces");
+}
 
 const workspaceState = readFileSync("native/visionos/VisionWebWorkspace/Models/WorkspacePanelState.swift", "utf8");
 if (!workspaceState.includes('panelAttachmentID = "workspace-panel"')) {
@@ -298,6 +307,19 @@ if (!immersiveView.includes("RealityView") || !immersiveView.includes("panelAtta
 const browserWindow = readFileSync("native/visionos/VisionWebWorkspace/Views/BrowserWindowView.swift", "utf8");
 if (!browserWindow.includes("WKWebView")) {
   violations.push("native browser window must include WKWebView prototype surface");
+}
+
+const immersiveEnvironmentFactory = readFileSync("native/visionos/VisionWebWorkspace/Models/ImmersiveEnvironmentSceneFactory.swift", "utf8");
+if (!immersiveEnvironmentFactory.includes("buildOffice") || !immersiveEnvironmentFactory.includes("buildLounge")) {
+  violations.push("native environment factory must build office and water lounge scenes");
+}
+if (!immersiveEnvironmentFactory.includes("water-pool") || !immersiveEnvironmentFactory.includes("caustic")) {
+  violations.push("water lounge scene must include water pool and caustic reflection layers");
+}
+
+const immersiveEnvironmentView = readFileSync("native/visionos/VisionWebWorkspace/Views/ImmersiveEnvironmentView.swift", "utf8");
+if (!immersiveEnvironmentView.includes("WorkspacePanelView") || !immersiveEnvironmentView.includes("ImmersiveEnvironmentSceneFactory")) {
+  violations.push("full immersive environments must host the Gateway-backed workspace panel");
 }
 
 const gatewayClient = readFileSync("native/visionos/VisionWebWorkspace/Models/GatewayClient.swift", "utf8");

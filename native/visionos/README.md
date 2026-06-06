@@ -36,7 +36,18 @@ xcodebuild \
   build
 ```
 
-The current app opens a mixed immersive workspace and renders a head-locked
-SwiftUI browser panel attachment. `WKWebView` is included for native webpage
-window prototyping; if attachment stability becomes a blocker on device, the
-same panel can display a remote browser stream from the gateway instead.
+The current app opens a mixed immersive workspace and two full immersive
+environment prototypes:
+
+- `WorkspaceConstants.immersiveSpaceID`: mixed passthrough web workspace.
+- `WorkspaceConstants.officeEnvironmentSpaceID`: full office environment.
+- `WorkspaceConstants.loungeEnvironmentSpaceID`: full water lounge environment.
+
+The environment prototypes are procedural RealityKit blockouts under
+`ImmersiveEnvironmentSceneFactory.swift`. They are intentionally source-first
+so the Linux workflow can review and version them before the Mac Builder
+replaces high-risk pieces with USDZ or Reality Composer Pro scene assets.
+
+`WKWebView` is included for native webpage window prototyping; if attachment
+stability becomes a blocker on device, the same panel can display a remote
+browser stream from the gateway instead.

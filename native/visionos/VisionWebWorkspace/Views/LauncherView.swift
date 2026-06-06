@@ -3,7 +3,7 @@ import SwiftUI
 struct LauncherView: View {
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
-    @State private var isWorkspaceOpen = false
+    @State private var activeSpaceID: String?
 
     var body: some View {
         VStack(spacing: 24) {
@@ -11,22 +11,61 @@ struct LauncherView: View {
                 .font(.largeTitle)
                 .fontWeight(.semibold)
 
-            Button {
-                Task {
-                    if isWorkspaceOpen {
-                        await dismissImmersiveSpace()
-                        isWorkspaceOpen = false
-                    } else {
-                        await openImmersiveSpace(id: WorkspaceConstants.immersiveSpaceID)
-                        isWorkspaceOpen = true
-                    }
+            VStack(spacing: 12) {
+                Button {
+                    toggleSpace(WorkspaceConstants.immersiveSpaceID)
+                } label: {
+                    Text(activeSpaceID == WorkspaceConstants.immersiveSpaceID ? "Close Workspace" : "Open Mixed Workspace")
                 }
-            } label: {
-                Text(isWorkspaceOpen ? "Close Workspace" : "Open Workspace")
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    toggleSpace(WorkspaceConstants.officeEnvironmentSpaceID)
+                } label: {
+                    Text(activeSpaceID == WorkspaceConstants.officeEnvironmentSpaceID ? "Close Office" : "Enter Office Environment")
+                }
+
+                Button {
+                    toggleSpace(WorkspaceConstants.loungeEnvironmentSpaceID)
+                } label: {
+                    Text(activeSpaceID == WorkspaceConstants.loungeEnvironmentSpaceID ? "Close Water Lounge" : "Enter Water Lounge")
+                }
             }
-            .buttonStyle(.borderedProminent)
+
+            if activeSpaceID != nil {
+                Button("Close Immersive Space") {
+                    closeActiveSpace()
+                }
+            }
         }
         .padding(40)
+    }
+
+    private func toggleSpace(_ spaceID: String) {
+        Task {
+            if activeSpaceID == spaceID {
+                await dismissImmersiveSpace()
+                activeSpaceID = nil
+                return
+            }
+
+            if activeSpaceID != nil {
+                await dismissImmersiveSpace()
+                activeSpaceID = nil
+            }
+
+            let result = await openImmersiveSpace(id: spaceID)
+            if case .opened = result {
+                activeSpaceID = spaceID
+            }
+        }
+    }
+
+    private func closeActiveSpace() {
+        Task {
+            await dismissImmersiveSpace()
+            activeSpaceID = nil
+        }
     }
 }
 
