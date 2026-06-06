@@ -76,6 +76,10 @@ AWS_MAC_WORKER_CONFIRM=allocate-24h-mac-host pnpm aws:mac:worker:launch
 
 The launch command allocates one Dedicated Host and starts one Mac instance
 only after the pricing estimate and monthly budget guard pass.
+If no explicit `AWS_MAC_WORKER_AZ` is set, the launcher checks every
+availability zone where the selected Mac instance type is offered. If AWS
+returns `InsufficientHostCapacity` for all offered zones, the command exits
+without creating a Dedicated Host or instance.
 
 ## Prelaunch checklist
 

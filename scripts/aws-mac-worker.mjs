@@ -213,29 +213,45 @@ function launchWorker() {
     throw new Error("Baseline stack is missing BuilderInstanceProfileName output");
   }
 
-  const availabilityZone = config.availabilityZone || selectAvailabilityZone();
-  const subnetId = selectSubnetId(availabilityZone);
   const securityGroupId = ensureSecurityGroup();
   const imageId = getMacAmiId();
+  const candidateZones = candidateAvailabilityZones();
 
-  console.log(`Allocating ${config.instanceType} Dedicated Host in ${availabilityZone}.`);
-  const hostPayload = awsJson([
-    "ec2",
-    "allocate-hosts",
-    "--instance-type",
-    config.instanceType,
-    "--availability-zone",
-    availabilityZone,
-    "--quantity",
-    "1",
-    "--auto-placement",
-    "off",
-    "--tag-specifications",
-    tagSpec("dedicated-host", { Role: "mac-builder", LeaseWindow: "24h-minimum" })
-  ]);
-  const hostId = hostPayload.HostIds?.[0];
+  let availabilityZone = null;
+  let subnetId = null;
+  let hostId = null;
+  const allocationFailures = [];
+
+  for (const zone of candidateZones) {
+    let zoneSubnetId = null;
+    try {
+      zoneSubnetId = selectSubnetId(zone);
+    } catch (error) {
+      allocationFailures.push(`${zone}: ${error instanceof Error ? error.message : String(error)}`);
+      continue;
+    }
+
+    console.log(`Allocating ${config.instanceType} Dedicated Host in ${zone}.`);
+    const allocation = allocateDedicatedHost(zone);
+    if (allocation.hostId) {
+      availabilityZone = zone;
+      subnetId = zoneSubnetId;
+      hostId = allocation.hostId;
+      break;
+    }
+
+    allocationFailures.push(`${zone}: ${allocation.error}`);
+    if (!isInsufficientHostCapacity(allocation.error) || config.availabilityZone) {
+      throw new Error(`Dedicated Host allocation failed in ${zone}: ${allocation.error}`);
+    }
+    console.warn(`Capacity unavailable in ${zone}; trying the next offered availability zone.`);
+  }
+
   if (!hostId) {
-    throw new Error("allocate-hosts did not return a host id");
+    console.error(`Unable to allocate ${config.instanceType} Dedicated Host in offered availability zones.`);
+    console.error(`Attempts: ${allocationFailures.join(" | ")}`);
+    console.error("No EC2 Mac Dedicated Host was allocated. Retry later or request quota in another region with available Mac capacity.");
+    process.exit(1);
   }
 
   console.log(`Launching Mac instance on host ${hostId} with AMI ${imageId}.`);
@@ -379,6 +395,39 @@ function firstMacInstanceId() {
   return listMacInstances().find((instance) => ["pending", "running", "stopped"].includes(instance.State?.Name))?.InstanceId ?? null;
 }
 
+function allocateDedicatedHost(availabilityZone) {
+  const result = aws(
+    [
+      "ec2",
+      "allocate-hosts",
+      "--instance-type",
+      config.instanceType,
+      "--availability-zone",
+      availabilityZone,
+      "--quantity",
+      "1",
+      "--auto-placement",
+      "off",
+      "--tag-specifications",
+      tagSpec("dedicated-host", { Role: "mac-builder", LeaseWindow: "24h-minimum" }),
+      "--output",
+      "json"
+    ],
+    { capture: true, allowFail: true }
+  );
+
+  if (result.status !== 0) {
+    return { hostId: null, error: (result.stderr || result.stdout || "allocate-hosts failed").trim() };
+  }
+
+  const payload = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+  return { hostId: payload.HostIds?.[0] ?? null, error: "" };
+}
+
+function isInsufficientHostCapacity(error) {
+  return /InsufficientHostCapacity|Insufficient capacity/i.test(error ?? "");
+}
+
 function getHourlyPriceUsd() {
   if (config.hourlyPriceUsd) {
     return config.hourlyPriceUsd;
@@ -433,6 +482,14 @@ function getMacAmiId() {
 }
 
 function selectAvailabilityZone() {
+  return candidateAvailabilityZones()[0];
+}
+
+function candidateAvailabilityZones() {
+  if (config.availabilityZone) {
+    return [config.availabilityZone];
+  }
+
   const payload = awsJson([
     "ec2",
     "describe-instance-type-offerings",
@@ -445,7 +502,7 @@ function selectAvailabilityZone() {
   if (zones.length === 0) {
     throw new Error(`No availability zone offering found for ${config.instanceType} in ${config.region}`);
   }
-  return zones[0];
+  return zones;
 }
 
 function selectSubnetId(availabilityZone) {
