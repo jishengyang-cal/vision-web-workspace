@@ -102,7 +102,14 @@ function printStatus() {
   console.log("AWS EC2 Mac Worker status");
   console.log(`mac dedicated hosts: ${hosts.length}`);
   for (const host of hosts) {
+    const timing = hostReleaseTiming(host);
     console.log(`- host ${host.HostId}: ${host.State}, ${host.HostProperties?.InstanceType}, ${host.AvailabilityZone}`);
+    console.log(`  allocated: ${timing.allocatedAt ?? "unknown"}`);
+    console.log(`  earliest release: ${timing.earliestRelease ?? "unknown"}`);
+    console.log(`  release ready: ${timing.releaseReady ? "yes" : "no"}`);
+    if (!timing.releaseReady && timing.remainingMs !== null) {
+      console.log(`  remaining: ${formatDuration(timing.remainingMs)}`);
+    }
   }
   console.log(`mac instances: ${instances.length}`);
   for (const instance of instances) {
@@ -389,6 +396,37 @@ function assertHostMinimumElapsed(host) {
   }
 
   throw new Error(`Refusing teardown before EC2 Mac 24-hour minimum. Host ${host.HostId} can be released after ${earliest}.`);
+}
+
+function hostReleaseTiming(host) {
+  const allocatedAtMs = Date.parse(host.AllocationTime ?? host.CreateTime ?? "");
+  if (Number.isNaN(allocatedAtMs)) {
+    return {
+      allocatedAt: null,
+      earliestRelease: null,
+      releaseReady: false,
+      remainingMs: null
+    };
+  }
+
+  const earliestReleaseMs = allocatedAtMs + 1000 * 60 * 60 * 24;
+  const remainingMs = Math.max(0, earliestReleaseMs - Date.now());
+  return {
+    allocatedAt: new Date(allocatedAtMs).toISOString(),
+    earliestRelease: new Date(earliestReleaseMs).toISOString(),
+    releaseReady: remainingMs === 0,
+    remainingMs
+  };
+}
+
+function formatDuration(ms) {
+  const totalMinutes = Math.ceil(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) {
+    return `${minutes}m`;
+  }
+  return `${hours}h ${minutes}m`;
 }
 
 function firstMacInstanceId() {

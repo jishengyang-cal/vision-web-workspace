@@ -75,6 +75,8 @@ const requiredScripts = [
   "aws:mac:worker:ssm-tunnel",
   "aws:mac:worker:teardown",
   "mac-builder:xcode:verify",
+  "mac-builder:validation:plan",
+  "mac-builder:validation",
   "hooks:install"
 ];
 for (const script of requiredScripts) {
@@ -157,6 +159,7 @@ const requiredFiles = [
   "scripts/aws-mac-worker.mjs",
   "scripts/aws-mac-xcode.mjs",
   "scripts/generate-app-icon.mjs",
+  "scripts/mac-builder-validation.mjs",
   "tests/mac-builder.e2e.mjs",
   "native/visionos/README.md",
   "native/visionos/project.yml",
@@ -220,6 +223,9 @@ for (const id of ["aws-mac-worker-guard", "xcode-artifact-plan", "native-gateway
     violations.push(`visionOS workflow is missing phase: ${id}`);
   }
 }
+if (!phaseIds.has("mac-builder-validation-window")) {
+  violations.push("visionOS workflow is missing the 24-hour Mac Builder validation window phase");
+}
 if (!phaseIds.has("immersive-environment-reconstruction")) {
   violations.push("visionOS workflow is missing immersive environment reconstruction phase");
 }
@@ -246,6 +252,9 @@ if (!phaseById.get("aws-mac-worker-guard")?.command?.includes("aws:mac:worker:qu
 }
 if (!phaseById.get("aws-mac-worker-guard")?.command?.includes("aws:mac:worker:cost-status")) {
   violations.push("AWS Mac worker guard phase must check cost status");
+}
+if (!phaseById.get("mac-builder-validation-window")?.command?.includes("mac-builder:validation")) {
+  violations.push("Mac Builder validation window phase must run the validation command");
 }
 if (!phaseById.get("xcode-artifact-plan")?.capabilities?.includes("apple-account-required")) {
   violations.push("Xcode artifact phase must require an Apple account boundary");
@@ -490,6 +499,17 @@ if (!awsWorkerScript.includes("getHourlyPriceUsd") || !awsWorkerScript.includes(
 }
 if (!awsWorkerScript.includes("allocate-hosts") || !awsWorkerScript.includes("run-instances")) {
   violations.push("AWS Mac Worker launch script must own EC2 Mac allocation and launch actions");
+}
+if (!awsWorkerScript.includes("earliest release") || !awsWorkerScript.includes("hostReleaseTiming")) {
+  violations.push("AWS Mac Worker status must show Dedicated Host release timing");
+}
+
+const macBuilderValidation = readFileSync("scripts/mac-builder-validation.mjs", "utf8");
+if (!macBuilderValidation.includes("validation-report.json") || !macBuilderValidation.includes("visionos:mac-build:check")) {
+  violations.push("Mac Builder validation runner must emit a report and include the real native build check");
+}
+if (/allocate-hosts|run-instances|release-hosts|terminate-instances/.test(macBuilderValidation)) {
+  violations.push("Mac Builder validation runner must not allocate, terminate, or release AWS Mac resources");
 }
 
 const gateway = readFileSync("services/gateway/src/index.ts", "utf8");

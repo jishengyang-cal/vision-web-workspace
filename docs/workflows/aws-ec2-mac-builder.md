@@ -453,6 +453,35 @@ Because the EC2 Mac Dedicated Host has a 24-hour minimum allocation period:
 7. Confirm AWS scrubbing workflow completes before reusing assumptions about
    local SSD/NVRAM state.
 
+The repository provides a repeatable validation runner for an already allocated
+host:
+
+```bash
+pnpm mac-builder:validation:plan
+pnpm mac-builder:validation
+```
+
+The runner does not allocate or release EC2 Mac resources. It reads
+`.run/aws-mac-builder/mac-builder.env` when present, keeps the builder token out
+of logs, and runs:
+
+- `pnpm assets:app-icon:check`
+- `pnpm workflow:check`
+- `pnpm test:e2e`
+- `pnpm test:mac-builder`
+- `pnpm test`
+- `pnpm visionos:mac-build:check` when a remote builder URL is configured
+
+It writes a local report to:
+
+```text
+.run/aws-mac-builder/validation-report.json
+```
+
+Use `pnpm aws:mac:worker:status` during the window. The status output includes
+the Dedicated Host allocation time, earliest release time, release readiness,
+and remaining time before the 24-hour minimum is satisfied.
+
 ## Cost guard implementation
 
 The repository cost guard defaults to a 100 USD monthly cap:

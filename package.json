@@ -47,6 +47,8 @@
     "aws:mac:worker:ssm-tunnel": "node scripts/aws-mac-worker.mjs ssm-tunnel",
     "aws:mac:worker:teardown": "node scripts/aws-mac-worker.mjs teardown",
     "mac-builder:xcode:verify": "scripts/mac-builder-verify-xcode.sh",
+    "mac-builder:validation:plan": "node scripts/mac-builder-validation.mjs plan",
+    "mac-builder:validation": "node scripts/mac-builder-validation.mjs run",
     "hooks:install": "git config core.hooksPath .githooks",
     "workflow:check": "pnpm run tools:doctor && pnpm run compliance:check && pnpm typecheck && pnpm build",
     "test:mac-builder": "pnpm build && node tests/mac-builder.e2e.mjs",

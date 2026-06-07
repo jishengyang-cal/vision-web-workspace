@@ -95,6 +95,13 @@
       "produces": ["Dedicated Host quota status", "current spend status", "24h minimum estimate", "live Mac resource inventory"]
     },
     {
+      "id": "mac-builder-validation-window",
+      "title": "24-hour Mac Builder validation window",
+      "capabilities": ["linux-runnable", "mac-builder-required", "mcp-candidate"],
+      "command": "pnpm mac-builder:validation",
+      "produces": ["cost status", "local workflow gate", "browser e2e result", "mock builder e2e result", "real Mac build result", "validation report"]
+    },
+    {
       "id": "xcode-artifact-plan",
       "title": "Xcode artifact handoff plan",
       "capabilities": ["mac-builder-required", "apple-account-required", "mcp-candidate"],
