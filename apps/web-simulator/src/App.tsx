@@ -10,7 +10,11 @@ import {
 } from "react";
 import {
   createDefaultLayout,
+  defaultWindowOpacity,
+  maxWorkspaceWindows,
+  minWindowOpacity,
   type WebWindowSpec,
+  type WindowLockMode,
   type WindowKind,
   type WorkspaceLayoutSpec
 } from "@vision-web-workspace/contracts";
@@ -79,6 +83,10 @@ export function App() {
   }
 
   async function createWindow(kind: WindowKind) {
+    if (state.windows.length >= maxWorkspaceWindows) {
+      return;
+    }
+
     const index = state.windows.filter((window) => window.kind === kind).length;
     const id = `${kind}-${Date.now()}`;
     const offset = 40 * (index + 1);
@@ -96,7 +104,8 @@ export function App() {
           y: 116 + offset,
           width: kind === "code" ? 760 : 640,
           height: kind === "code" ? 520 : 400
-        }
+        },
+        opacity: defaultWindowOpacity
       })
     });
   }
@@ -135,11 +144,14 @@ export function App() {
         </div>
 
         <div className="tool-group">
-          <button onClick={() => void createWindow("terminal")}>Terminal</button>
-          <button onClick={() => void createWindow("code")}>Code</button>
-          <button onClick={() => void createWindow("browser")}>Browser</button>
-          <button onClick={() => void createWindow("docs")}>Docs</button>
-          <button onClick={() => void createWindow("logs")}>Logs</button>
+          <button disabled={state.windows.length >= maxWorkspaceWindows} onClick={() => void createWindow("terminal")}>Terminal</button>
+          <button disabled={state.windows.length >= maxWorkspaceWindows} onClick={() => void createWindow("code")}>Code</button>
+          <button disabled={state.windows.length >= maxWorkspaceWindows} onClick={() => void createWindow("browser")}>Browser</button>
+          <button disabled={state.windows.length >= maxWorkspaceWindows} onClick={() => void createWindow("docs")}>Docs</button>
+          <button disabled={state.windows.length >= maxWorkspaceWindows} onClick={() => void createWindow("logs")}>Logs</button>
+          <div className="limit-note">
+            {state.windows.length}/{maxWorkspaceWindows} windows
+          </div>
         </div>
 
         <div className="tool-group">
@@ -206,7 +218,7 @@ export function App() {
           <div className="workspace-root">
             <div className="workspace-header">
               <span>{state.name}</span>
-              <span>{state.windows.length} windows</span>
+              <span>{state.windows.length}/{maxWorkspaceWindows} screen-locked windows</span>
             </div>
             {state.windows.map((window) => (
               <SpatialWindow
@@ -342,7 +354,8 @@ function SpatialWindow({
         top: webWindow.rect.y,
         width: webWindow.rect.width,
         height: webWindow.rect.height,
-        zIndex: webWindow.zIndex
+        zIndex: webWindow.zIndex,
+        opacity: webWindow.opacity ?? defaultWindowOpacity
       }}
     >
       <div className="titlebar" onPointerDown={beginDrag}>
@@ -366,6 +379,47 @@ function SpatialWindow({
         />
         <button>Go</button>
       </form>
+
+      <div className="window-controls">
+        <label>
+          Opacity
+          <input
+            min={minWindowOpacity}
+            max="1"
+            step="0.05"
+            type="range"
+            value={webWindow.opacity ?? defaultWindowOpacity}
+            onChange={(event) =>
+              dispatch({
+                type: "set-opacity",
+                windowId: webWindow.id,
+                opacity: Number(event.currentTarget.value)
+              })
+            }
+          />
+        </label>
+        <select
+          aria-label={`Lock mode for ${webWindow.title}`}
+          value={webWindow.lockMode ?? "screen-locked"}
+          onChange={(event) =>
+            dispatch({
+              type: "set-lock-mode",
+              windowId: webWindow.id,
+              lockMode: event.currentTarget.value as WindowLockMode
+            })
+          }
+        >
+          <option value="screen-locked">screen</option>
+          <option value="world-locked">world</option>
+          <option value="unlocked">free</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: "toggle-edit-lock", windowId: webWindow.id })}
+        >
+          {webWindow.locked ? "Unlock edit" : "Lock edit"}
+        </button>
+      </div>
 
       <div className="frame-wrap">
         {inputLocked ? <div className="frame-shield" /> : null}

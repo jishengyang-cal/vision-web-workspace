@@ -1,8 +1,13 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import {
+  createDefaultWindowPose3D,
   createDefaultLayout,
+  defaultWindowOpacity,
   isSessionKind,
+  maxWindowOpacity,
+  maxWorkspaceWindows,
+  minWindowOpacity,
   type CreateSessionRequest,
   type CreateSessionResponse,
   type GetWorkspaceLayoutResponse,
@@ -10,6 +15,7 @@ import {
   type SaveWorkspaceLayoutResponse,
   type RemoteSessionSpec,
   type SessionKind,
+  type WebWindowSpec,
   type WorkspaceLayoutSpec
 } from "@vision-web-workspace/contracts";
 
@@ -116,7 +122,26 @@ function normalizeLayout(workspaceId: string, layout: WorkspaceLayoutSpec): Work
   return {
     ...layout,
     id: workspaceId,
+    windows: layout.windows
+      .slice(0, maxWorkspaceWindows)
+      .map((window, index) => normalizeWindow(window, index)),
     updatedAt: new Date().toISOString()
+  };
+}
+
+function normalizeWindow(window: WebWindowSpec, index: number): WebWindowSpec {
+  const now = new Date().toISOString();
+
+  return {
+    ...window,
+    surfaceMode: window.surfaceMode ?? "direct-web",
+    bookmarkId: window.bookmarkId ?? null,
+    opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
+    pose3D: window.pose3D ?? createDefaultWindowPose3D(index),
+    lockMode: window.lockMode ?? "screen-locked",
+    clipboardPolicy: window.clipboardPolicy ?? "platform-default",
+    createdAt: window.createdAt ?? now,
+    updatedAt: now
   };
 }
 
@@ -199,6 +224,10 @@ function setCors(response: ServerResponse) {
   response.setHeader("access-control-allow-origin", "*");
   response.setHeader("access-control-allow-methods", "GET,POST,PUT,OPTIONS");
   response.setHeader("access-control-allow-headers", "content-type");
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 function renderLogsPage(): string {

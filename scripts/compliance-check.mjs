@@ -119,6 +119,7 @@ const requiredFiles = [
   "docs/workflows/visionos-development.md",
   "docs/workflows/aws-ec2-mac-builder.md",
   "docs/workflows/immersive-environments.md",
+  "docs/workflows/remote-web-window-workspace.md",
   "docs/workflows/app-store-release.md",
   "docs/workflows/mcp-and-hooks.md",
   "infra/aws-mac-builder/config.example.json",
@@ -153,6 +154,8 @@ const requiredFiles = [
   "native/visionos/VisionWebWorkspace/Views/FollowWorkspaceImmersiveView.swift",
   "native/visionos/VisionWebWorkspace/Views/ImmersiveEnvironmentView.swift",
   "native/visionos/VisionWebWorkspace/Views/WorkspacePanelView.swift",
+  "native/visionos/VisionWebWorkspace/Views/WorkspaceMenuBarView.swift",
+  "native/visionos/VisionWebWorkspace/Views/SpatialRemoteWebWindowView.swift",
   "native/visionos/VisionWebWorkspace/Views/BrowserWindowView.swift",
   ".githooks/pre-commit",
   ".githooks/pre-push"
@@ -298,10 +301,18 @@ const workspaceState = readFileSync("native/visionos/VisionWebWorkspace/Models/W
 if (!workspaceState.includes('panelAttachmentID = "workspace-panel"')) {
   violations.push("native workspace state must define the workspace panel attachment id");
 }
+if (!workspaceState.includes("menuAttachmentID") || !workspaceState.includes("windowAttachmentPrefix")) {
+  violations.push("native workspace state must define menu and remote window attachment ids");
+}
 
 const immersiveView = readFileSync("native/visionos/VisionWebWorkspace/Views/FollowWorkspaceImmersiveView.swift", "utf8");
-if (!immersiveView.includes("RealityView") || !immersiveView.includes("panelAttachmentID")) {
-  violations.push("native immersive view must render the workspace panel as a RealityView attachment");
+if (
+  !immersiveView.includes("RealityView") ||
+  !immersiveView.includes("menuAttachmentID") ||
+  !immersiveView.includes("windowAttachmentID") ||
+  !immersiveView.includes("WorldTrackingProvider")
+) {
+  violations.push("native mixed workspace must render a head-tracked menu and remote web window attachments");
 }
 
 const browserWindow = readFileSync("native/visionos/VisionWebWorkspace/Views/BrowserWindowView.swift", "utf8");
@@ -325,6 +336,9 @@ if (!immersiveEnvironmentView.includes("WorkspacePanelView") || !immersiveEnviro
 const gatewayClient = readFileSync("native/visionos/VisionWebWorkspace/Models/GatewayClient.swift", "utf8");
 if (!gatewayClient.includes("fetchLayout") || !gatewayClient.includes("createSession") || !gatewayClient.includes("saveLayout")) {
   violations.push("native Gateway client must support layout fetch/save and session creation");
+}
+if (!gatewayClient.includes("maximumWindowCount") || !gatewayClient.includes("setOpacity")) {
+  violations.push("native workspace store must enforce window count and opacity controls");
 }
 
 const macBuilderInterface = JSON.parse(readFileSync("mcp/interfaces/mac-builder.json", "utf8"));
@@ -387,6 +401,9 @@ if (!gateway.includes("workspaces") || !gateway.includes("SaveWorkspaceLayoutReq
 }
 if (!gateway.includes('auditLevel: "lifecycle"')) {
   violations.push("gateway terminal sessions must default to lifecycle audit level");
+}
+if (!gateway.includes("maxWorkspaceWindows") || !gateway.includes("defaultWindowOpacity")) {
+  violations.push("gateway must normalize remote web window count and opacity fields");
 }
 
 const releaseWorkflow = readFileSync("docs/workflows/app-store-release.md", "utf8");

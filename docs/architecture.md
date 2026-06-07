@@ -2,14 +2,25 @@
 
 ## Product definition
 
-`vision-web-workspace` is a spatial web development desktop. It provides a
-head-locked workspace root and movable web windows. A window can host any
-browser-addressable development surface: SSH terminal, code-server, CI,
-documentation, logs, notebooks, or a remote browser stream.
+`vision-web-workspace` is a spatial remote web workspace shell. It provides
+Vision Pro window management for browser-addressable development surfaces:
+SSH terminals, code-server, CI, documentation, logs, notebooks, dashboards, or
+remote browser streams.
+
+The Vision Pro client does not own the remote development UI. Each window
+points to a remote server URL or session descriptor, and the remote server
+decides the rendered content. The app owns only the spatial shell: window
+creation, placement, resize, focus, locking, opacity, basic navigation,
+bookmarks, keyboard/dictation input paths, copy/paste, and layout persistence.
+
+The corrected first-stage plan is recorded in
+`docs/workflows/remote-web-window-workspace.md`.
 
 ## Non-goals
 
 - It is not only a monitoring panel.
+- It is not the IDE, terminal implementation, remote browser runtime, or server
+  application rendered inside a window.
 - It is not a replacement for Xcode, visionOS SDK, signing, or Apple's
   official simulator.
 - It does not give the Vision Pro client direct access to SSH keys, GitHub
@@ -29,8 +40,9 @@ Imperativ adapter
      events.
 
 Native visionOS shell
-  -> future generated SwiftUI/RealityKit client that renders the same window
-     model inside a mixed ImmersiveSpace.
+  -> SwiftUI/RealityKit client that renders remote web windows through native
+     windows first, then through a custom mixed ImmersiveSpace workspace for
+     screen-locked spatial transforms.
 
 Workflow control plane
   -> executable repo workflows, Agent skills, MCP capability adapters, and
@@ -47,9 +59,14 @@ handled by the gateway and later governed by Imperativ capabilities:
 vision.window.create
 vision.window.move
 vision.window.resize
+vision.window.rotate
+vision.window.setOpacity
+vision.window.setLockMode
 vision.window.close
 terminal.session.open
 browser.session.open
+bookmark.create
+bookmark.open
 workspace.layout.save
 workspace.layout.restore
 ```

@@ -1,10 +1,15 @@
 # vision-web-workspace
 
-Spatial web development workspace for Apple Vision Pro style workflows.
+Spatial remote web workspace shell for Apple Vision Pro style workflows.
 
-The first target is not a monitoring wall. It is a head-locked, movable web
-window desktop where each window can host a terminal, code editor, browser,
-documentation, CI dashboard, or remote app.
+The first target is not a monitoring wall and not an IDE built into the app. It
+is a Vision Pro web-window shell for remote development surfaces. Each window
+opens a browser-addressable remote URL or session: terminal, code editor,
+browser, documentation, CI dashboard, logs, or remote app.
+
+The Vision Pro app owns window management, input, copy/paste, bookmarks,
+navigation, opacity, and layout persistence. Remote servers own the rendered
+content and business logic.
 
 ## Hard boundary
 
@@ -157,6 +162,10 @@ For the office and water lounge environment reconstruction, use
 `docs/workflows/immersive-environments.md`. The current native app exposes the
 original mixed web workspace plus two full immersive scene entries.
 
+For the corrected first-stage remote web window plan, including native window
+mode, mixed screen-locked mode, opacity, input, and gateway boundaries, use
+`docs/workflows/remote-web-window-workspace.md`.
+
 AWS baseline setup is guarded by a 100 USD budget cap and does not start EC2
 Mac:
 
@@ -194,8 +203,14 @@ pnpm hooks:install
 
 ## Next build targets
 
+- Extend the shared window contract with opacity, remote surface mode,
+  bookmark references, 3D pose, and lock mode.
+- Add max-10 window enforcement across the window manager and gateway.
+- Implement native remote web windows with system keyboard, dictation,
+  copy/paste, bookmarks, navigation, and opacity controls.
+- Convert the mixed workspace prototype from one panel into a menu plus
+  independent spatial remote web windows.
 - Add real terminal gateway integration with ttyd or xterm.js.
 - Add remote browser gateway integration with noVNC, KasmVNC, Xpra, or WebRTC.
-- Add Playwright tests for move, resize, focus, and session creation.
-- Add a Mac Builder worker that generates the Xcode project and runs `xcodebuild`.
+- Add Playwright tests for move, resize, focus, opacity, and session creation.
 - Add device-lab and release adapters after Apple Developer Program setup.

@@ -2,8 +2,16 @@ import type {
   Rect,
   Size,
   WebWindowSpec,
+  WindowLockMode,
   WindowKind,
   WorkspaceLayoutSpec
+} from "@vision-web-workspace/contracts";
+import {
+  createDefaultWindowPose3D,
+  defaultWindowOpacity,
+  maxWindowOpacity,
+  maxWorkspaceWindows,
+  minWindowOpacity
 } from "@vision-web-workspace/contracts";
 
 export interface WorkspaceState extends WorkspaceLayoutSpec {}
@@ -15,6 +23,9 @@ export type WorkspaceAction =
   | { type: "create"; window: Omit<WebWindowSpec, "zIndex" | "focused"> }
   | { type: "close"; windowId: string }
   | { type: "set-url"; windowId: string; url: string }
+  | { type: "set-opacity"; windowId: string; opacity: number }
+  | { type: "set-lock-mode"; windowId: string; lockMode: WindowLockMode }
+  | { type: "toggle-edit-lock"; windowId: string }
   | { type: "restore"; layout: WorkspaceLayoutSpec };
 
 export function workspaceReducer(
@@ -57,10 +68,44 @@ export function workspaceReducer(
     case "set-url":
       return updateWindow(state, action.windowId, (window) => ({
         ...window,
-        url: normalizeUrl(action.url)
+        url: normalizeUrl(action.url),
+        updatedAt: new Date().toISOString()
       }));
+    case "set-opacity":
+      return updateWindow(
+        state,
+        action.windowId,
+        (window) => ({
+          ...window,
+          opacity: clamp(action.opacity, minWindowOpacity, maxWindowOpacity),
+          updatedAt: new Date().toISOString()
+        }),
+        { allowLocked: true }
+      );
+    case "set-lock-mode":
+      return updateWindow(
+        state,
+        action.windowId,
+        (window) => ({
+          ...window,
+          lockMode: action.lockMode,
+          updatedAt: new Date().toISOString()
+        }),
+        { allowLocked: true }
+      );
+    case "toggle-edit-lock":
+      return updateWindow(
+        state,
+        action.windowId,
+        (window) => ({
+          ...window,
+          locked: !window.locked,
+          updatedAt: new Date().toISOString()
+        }),
+        { allowLocked: true }
+      );
     case "restore":
-      return stamp(action.layout);
+      return stamp(normalizeLayout(action.layout));
     default:
       return state;
   }
@@ -75,16 +120,27 @@ export function createWebWindow(
     rect: Rect;
     minSize?: Size;
     locked?: boolean;
+    opacity?: number;
   }
 ): Omit<WebWindowSpec, "zIndex" | "focused"> {
+  const now = new Date().toISOString();
+
   return {
     id: options.id,
     title: options.title,
     kind: options.kind,
     url: normalizeUrl(options.url),
+    surfaceMode: "direct-web",
+    bookmarkId: null,
+    opacity: clamp(options.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
     rect: options.rect,
+    pose3D: createDefaultWindowPose3D(0),
     minSize: options.minSize ?? { width: 360, height: 240 },
-    locked: options.locked ?? false
+    locked: options.locked ?? false,
+    lockMode: "screen-locked",
+    clipboardPolicy: "platform-default",
+    createdAt: now,
+    updatedAt: now
   };
 }
 
@@ -99,18 +155,21 @@ export function parseLayout(raw: string): WorkspaceLayoutSpec {
     throw new Error("Invalid workspace layout");
   }
 
-  return parsed;
+  return normalizeLayout(parsed);
 }
 
 function updateWindow(
   state: WorkspaceState,
   windowId: string,
-  update: (window: WebWindowSpec) => WebWindowSpec
+  update: (window: WebWindowSpec) => WebWindowSpec,
+  options: { allowLocked?: boolean } = {}
 ): WorkspaceState {
   return stamp({
     ...state,
     windows: state.windows.map((window) =>
-      window.id === windowId && !window.locked ? update(window) : window
+      window.id === windowId && (options.allowLocked || !window.locked)
+        ? update(window)
+        : window
     )
   });
 }
@@ -133,11 +192,25 @@ function createWindow(
   state: WorkspaceState,
   window: Omit<WebWindowSpec, "zIndex" | "focused">
 ): WorkspaceState {
+  if (state.windows.length >= maxWorkspaceWindows) {
+    return state;
+  }
+
   const nextZ = Math.max(0, ...state.windows.map((item) => item.zIndex)) + 1;
+  const now = new Date().toISOString();
+  const index = state.windows.length;
   const newWindow: WebWindowSpec = {
     ...window,
     url: normalizeUrl(window.url),
+    surfaceMode: window.surfaceMode ?? "direct-web",
+    bookmarkId: window.bookmarkId ?? null,
+    opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
     rect: clampRect(window.rect, state.viewport, window.minSize),
+    pose3D: window.pose3D ?? createDefaultWindowPose3D(index),
+    lockMode: window.lockMode ?? "screen-locked",
+    clipboardPolicy: window.clipboardPolicy ?? "platform-default",
+    createdAt: window.createdAt ?? now,
+    updatedAt: now,
     zIndex: nextZ,
     focused: true
   };
@@ -181,6 +254,32 @@ function normalizeUrl(url: string): string {
   }
 
   return `https://${url}`;
+}
+
+function normalizeLayout(layout: WorkspaceLayoutSpec): WorkspaceLayoutSpec {
+  return {
+    ...layout,
+    windows: layout.windows
+      .slice(0, maxWorkspaceWindows)
+      .map((window, index) => normalizeWindow(window, index))
+  };
+}
+
+function normalizeWindow(window: WebWindowSpec, index: number): WebWindowSpec {
+  const now = window.updatedAt ?? new Date().toISOString();
+
+  return {
+    ...window,
+    url: normalizeUrl(window.url),
+    surfaceMode: window.surfaceMode ?? "direct-web",
+    bookmarkId: window.bookmarkId ?? null,
+    opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
+    pose3D: window.pose3D ?? createDefaultWindowPose3D(index),
+    lockMode: window.lockMode ?? "screen-locked",
+    clipboardPolicy: window.clipboardPolicy ?? "platform-default",
+    createdAt: window.createdAt ?? now,
+    updatedAt: now
+  };
 }
 
 function clamp(value: number, min: number, max: number): number {

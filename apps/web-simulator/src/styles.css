@@ -35,6 +35,11 @@ button:hover {
   background: #32404e;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
 .shell {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -84,6 +89,11 @@ button:hover {
   display: flex !important;
   align-items: center;
   grid-template-columns: auto 1fr;
+}
+
+.limit-note {
+  color: #95a3b2;
+  font-size: 12px;
 }
 
 .sim-stage {
@@ -154,7 +164,7 @@ button:hover {
 .spatial-window {
   position: absolute;
   display: grid;
-  grid-template-rows: 38px 38px 1fr;
+  grid-template-rows: 38px 38px 42px 1fr;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
@@ -240,6 +250,39 @@ button:hover {
 
 .addressbar button {
   padding: 4px 6px;
+}
+
+.window-controls {
+  display: grid;
+  grid-template-columns: 1fr 92px 92px;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 8px;
+  background: #111720;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.window-controls label {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 8px;
+  align-items: center;
+  color: #b7c0ca;
+  font-size: 12px;
+}
+
+.window-controls select {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  padding: 5px 6px;
+  background: #0d1117;
+  color: #e6edf5;
+}
+
+.window-controls button {
+  padding: 5px 6px;
+  font-size: 12px;
 }
 
 .frame-wrap {

@@ -51,3 +51,20 @@ replaces high-risk pieces with USDZ or Reality Composer Pro scene assets.
 `WKWebView` is included for native webpage window prototyping; if attachment
 stability becomes a blocker on device, the same panel can display a remote
 browser stream from the gateway instead.
+
+## Current product direction
+
+The native client is a remote web window shell. It does not own the terminal,
+IDE, dashboard, or remote app content. Each window displays a browser-based
+remote server surface, while the Vision Pro app owns the local window shell:
+navigation, bookmarks, opacity, input, copy/paste, layout, and spatial
+placement.
+
+The first native implementation target should use system windows for remote web
+surfaces so visionOS owns native move/resize behavior, keyboard input, and
+system dictation. The mixed immersive workspace remains the follow-up target
+for screen-locked custom windows with independent scale, rotation, angle,
+opacity, and lock state.
+
+The detailed first-stage plan is
+`docs/workflows/remote-web-window-workspace.md`.

@@ -2,6 +2,17 @@ export type WindowKind = "terminal" | "code" | "browser" | "docs" | "logs";
 
 export type SessionKind = "terminal" | "code" | "browser" | "docs" | "logs";
 
+export const maxWorkspaceWindows = 10;
+export const minWindowOpacity = 0.25;
+export const maxWindowOpacity = 1;
+export const defaultWindowOpacity = 0.92;
+
+export type WindowSurfaceMode = "direct-web" | "remote-stream";
+
+export type WindowLockMode = "unlocked" | "screen-locked" | "world-locked";
+
+export type ClipboardPolicy = "platform-default" | "gateway-mediated" | "disabled";
+
 export type WorkflowCapability =
   | "linux-runnable"
   | "optional-swift-toolchain"
@@ -33,6 +44,12 @@ export interface Vec2 {
   y: number;
 }
 
+export interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface Size {
   width: number;
   height: number;
@@ -49,16 +66,31 @@ export interface WorkspacePoseSpec {
   smoothing: number;
 }
 
+export interface WindowPose3DSpec extends Vec3 {
+  yawDegrees: number;
+  pitchDegrees: number;
+  rollDegrees: number;
+  scale: number;
+}
+
 export interface WebWindowSpec {
   id: string;
   title: string;
   kind: WindowKind;
   url: string;
+  surfaceMode: WindowSurfaceMode;
+  bookmarkId?: string | null;
+  opacity: number;
   rect: Rect;
+  pose3D: WindowPose3DSpec;
   minSize: Size;
   zIndex: number;
   focused: boolean;
   locked: boolean;
+  lockMode: WindowLockMode;
+  clipboardPolicy: ClipboardPolicy;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface WorkspaceLayoutSpec {
@@ -258,6 +290,21 @@ export const defaultPose: WorkspacePoseSpec = {
   smoothing: 0.18
 };
 
+export function createDefaultWindowPose3D(index: number): WindowPose3DSpec {
+  const column = index % 3;
+  const row = Math.floor(index / 3);
+
+  return {
+    x: (column - 1) * 0.72,
+    y: 0.16 - row * 0.46,
+    z: -1.25,
+    yawDegrees: (column - 1) * -7,
+    pitchDegrees: -2,
+    rollDegrees: 0,
+    scale: 1
+  };
+}
+
 export function createDefaultLayout(
   options: {
     terminalUrl?: string;
@@ -281,33 +328,57 @@ export function createDefaultLayout(
         title: "Terminal",
         kind: "terminal",
         url: options.terminalUrl ?? "http://localhost:7681",
+        surfaceMode: "direct-web",
+        bookmarkId: null,
+        opacity: defaultWindowOpacity,
         rect: { x: 64, y: 88, width: 680, height: 420 },
+        pose3D: createDefaultWindowPose3D(0),
         minSize: { width: 360, height: 240 },
         zIndex: 3,
         focused: true,
-        locked: false
+        locked: false,
+        lockMode: "screen-locked",
+        clipboardPolicy: "platform-default",
+        createdAt: now,
+        updatedAt: now
       },
       {
         id: "code",
         title: "Code",
         kind: "code",
         url: options.codeUrl ?? "http://localhost:8080",
+        surfaceMode: "direct-web",
+        bookmarkId: null,
+        opacity: defaultWindowOpacity,
         rect: { x: 760, y: 88, width: 620, height: 560 },
+        pose3D: createDefaultWindowPose3D(1),
         minSize: { width: 420, height: 300 },
         zIndex: 2,
         focused: false,
-        locked: false
+        locked: false,
+        lockMode: "screen-locked",
+        clipboardPolicy: "platform-default",
+        createdAt: now,
+        updatedAt: now
       },
       {
         id: "browser",
         title: "Browser",
         kind: "browser",
         url: options.browserUrl ?? "https://example.com",
+        surfaceMode: "direct-web",
+        bookmarkId: null,
+        opacity: defaultWindowOpacity,
         rect: { x: 112, y: 536, width: 560, height: 300 },
+        pose3D: createDefaultWindowPose3D(2),
         minSize: { width: 360, height: 240 },
         zIndex: 1,
         focused: false,
-        locked: false
+        locked: false,
+        lockMode: "screen-locked",
+        clipboardPolicy: "platform-default",
+        createdAt: now,
+        updatedAt: now
       }
     ]
   };

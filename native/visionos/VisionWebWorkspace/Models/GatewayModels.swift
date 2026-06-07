@@ -21,16 +21,34 @@ struct GatewayPose: Codable, Equatable {
     var smoothing: Double
 }
 
+struct GatewayWindowPose3D: Codable, Equatable {
+    var x: Double
+    var y: Double
+    var z: Double
+    var yawDegrees: Double
+    var pitchDegrees: Double
+    var rollDegrees: Double
+    var scale: Double
+}
+
 struct GatewayWindow: Codable, Identifiable, Equatable {
     var id: String
     var title: String
     var kind: String
     var url: String
+    var surfaceMode: String
+    var bookmarkId: String?
+    var opacity: Double
     var rect: GatewayRect
+    var pose3D: GatewayWindowPose3D
     var minSize: GatewaySize
     var zIndex: Int
     var focused: Bool
     var locked: Bool
+    var lockMode: String
+    var clipboardPolicy: String
+    var createdAt: String?
+    var updatedAt: String?
 }
 
 struct GatewayLayout: Codable, Equatable {
@@ -72,4 +90,26 @@ struct GatewaySession: Codable, Identifiable {
     var targetLabel: String?
     var auditLevel: String?
     var mode: String?
+}
+
+enum WorkspaceWindowDefaults {
+    static let maximumWindowCount = 10
+    static let minimumOpacity = 0.25
+    static let maximumOpacity = 1.0
+    static let defaultOpacity = 0.92
+
+    static func pose3D(index: Int) -> GatewayWindowPose3D {
+        let column = index % 3
+        let row = index / 3
+
+        return GatewayWindowPose3D(
+            x: Double(column - 1) * 0.72,
+            y: 0.16 - Double(row) * 0.46,
+            z: -1.25,
+            yawDegrees: Double(column - 1) * -7,
+            pitchDegrees: -2,
+            rollDegrees: 0,
+            scale: 1
+        )
+    }
 }

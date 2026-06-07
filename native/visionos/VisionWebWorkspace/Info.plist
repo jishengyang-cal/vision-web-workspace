@@ -24,6 +24,8 @@
 	<dict/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSWorldSensingUsageDescription</key>
+	<string>Vision Web Workspace uses head tracking to keep remote web windows fixed in the wearer's view while passthrough surroundings remain visible.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

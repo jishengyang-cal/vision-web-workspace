@@ -5,8 +5,20 @@ enum WorkspaceConstants {
     static let officeEnvironmentSpaceID = "OfficeEnvironmentSpace"
     static let loungeEnvironmentSpaceID = "LoungeEnvironmentSpace"
     static let rootEntityName = "HeadLockedWorkspaceRoot"
+    static let menuAttachmentID = "workspace-menu"
+    static let menuEntityName = "WorkspaceMenu"
     static let panelAttachmentID = "workspace-panel"
     static let panelEntityName = "WorkspacePanel"
+    static let windowAttachmentPrefix = "workspace-window-"
+    static let windowEntityPrefix = "RemoteWindow:"
+
+    static func windowAttachmentID(_ windowID: String) -> String {
+        "\(windowAttachmentPrefix)\(windowID)"
+    }
+
+    static func windowEntityName(_ windowID: String) -> String {
+        "\(windowEntityPrefix)\(windowID)"
+    }
 }
 
 enum ImmersiveEnvironmentKind: String, CaseIterable, Identifiable {
