@@ -186,7 +186,7 @@ enum ImmersiveEnvironmentSceneFactory {
     }
 
     private static func simple(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat, _ alpha: CGFloat = 1.0, roughness: Float = 0.4, metallic: Bool = false) -> SimpleMaterial {
-        SimpleMaterial(color: UIColor(red: red, green: green, blue: blue, alpha: alpha), roughness: roughness, isMetallic: metallic)
+        SimpleMaterial(color: UIColor(red: red, green: green, blue: blue, alpha: alpha), roughness: .float(roughness), isMetallic: metallic)
     }
 
     private static func unlit(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat, _ alpha: CGFloat = 1.0) -> UnlitMaterial {

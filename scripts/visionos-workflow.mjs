@@ -254,10 +254,19 @@ function createRepoRef() {
   return {
     provider: remoteUrl.includes("github.com") ? "github" : "local",
     repository: repositoryNameFromRemote(remoteUrl),
-    remoteUrl,
+    remoteUrl: process.env.VISIONOS_REPO_REMOTE_URL ?? publicGithubRemoteUrl(remoteUrl),
     branch,
     commitSha
   };
+}
+
+function publicGithubRemoteUrl(remoteUrl) {
+  const sshMatch = /^git@github.com[^:]*:([^/]+\/[^/.]+)(?:\.git)?$/.exec(remoteUrl);
+  if (sshMatch) {
+    return `https://github.com/${sshMatch[1]}.git`;
+  }
+
+  return remoteUrl;
 }
 
 function repositoryNameFromRemote(remoteUrl) {
