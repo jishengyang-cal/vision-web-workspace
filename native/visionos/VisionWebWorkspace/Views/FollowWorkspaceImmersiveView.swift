@@ -58,6 +58,27 @@ struct FollowWorkspaceImmersiveView: View {
                         },
                         close: {
                             store.close(windowId: window.id)
+                        },
+                        scale: { delta in
+                            store.scale(windowId: window.id, delta: delta)
+                        },
+                        rotate: { yawDelta, pitchDelta, rollDelta in
+                            store.rotate(
+                                windowId: window.id,
+                                yawDelta: yawDelta,
+                                pitchDelta: pitchDelta,
+                                rollDelta: rollDelta
+                            )
+                        },
+                        moveDepth: { delta in
+                            store.moveDepth(windowId: window.id, delta: delta)
+                        },
+                        resize: { widthDelta, heightDelta in
+                            store.resize(
+                                windowId: window.id,
+                                widthDelta: widthDelta,
+                                heightDelta: heightDelta
+                            )
                         }
                     )
                 }

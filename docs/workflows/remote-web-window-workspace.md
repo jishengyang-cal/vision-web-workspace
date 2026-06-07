@@ -259,6 +259,22 @@ and renders them as windows.
 7. If attachment stability blocks web input, route mixed windows to remote
    browser streams while keeping native windows as the primary web input path.
 
+## Current implementation checkpoint
+
+The shared workspace contract, browser simulator, gateway layout/session APIs,
+native `WindowGroup` web host, and mixed immersive workspace now use the same
+window model. The implemented shell covers max-10 window creation, sibling
+placement, minimize/restore bubbles, URL navigation, bookmarks, opacity,
+layout save/restore/reset, lock mode, diagnostics copy, and mixed-workspace
+position, scale, depth, yaw, pitch, roll, and size controls.
+
+This checkpoint does not claim device validation of `WKWebView` inside
+RealityView attachments. That remains a TestFlight/device acceptance item after
+Apple account review unblocks local Vision Pro testing. If device testing shows
+that direct WebKit attachments are unstable, the existing `surfaceMode` field
+is the boundary for switching the affected mixed windows to remote browser
+streams without changing the workspace layout contract.
+
 ## Acceptance criteria
 
 - Opening the app can preserve real surroundings through the public visionOS

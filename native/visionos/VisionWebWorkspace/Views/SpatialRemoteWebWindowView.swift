@@ -15,9 +15,14 @@ struct SpatialRemoteWebWindowView: View {
     let reload: () -> Void
     let toggleBookmark: () -> Void
     let close: () -> Void
+    let scale: (Double) -> Void
+    let rotate: (Double, Double, Double) -> Void
+    let moveDepth: (Double) -> Void
+    let resize: (Double, Double) -> Void
 
     @State private var address = ""
     @State private var dragStartPose: GatewayWindowPose3D?
+    private let transformColumns = [GridItem(.adaptive(minimum: 74), spacing: 6)]
 
     var body: some View {
         Group {
@@ -170,7 +175,7 @@ struct SpatialRemoteWebWindowView: View {
                 )
             }
 
-            HStack(spacing: 8) {
+            LazyVGrid(columns: transformColumns, spacing: 6) {
                 Button(window.locked ? "Unlock" : "Lock") {
                     window.locked.toggle()
                     touchWindow()
@@ -192,6 +197,24 @@ struct SpatialRemoteWebWindowView: View {
                 }
                 Button("Pitch +") {
                     adjustPitch(3)
+                }
+                Button("Roll -") {
+                    adjustRoll(-3)
+                }
+                Button("Roll +") {
+                    adjustRoll(3)
+                }
+                Button("Width -") {
+                    adjustSize(widthDelta: -36)
+                }
+                Button("Width +") {
+                    adjustSize(widthDelta: 36)
+                }
+                Button("Height -") {
+                    adjustSize(heightDelta: -32)
+                }
+                Button("Height +") {
+                    adjustSize(heightDelta: 32)
                 }
                 Button("Near") {
                     adjustDepth(0.08)
@@ -314,8 +337,7 @@ struct SpatialRemoteWebWindowView: View {
             return
         }
 
-        window.pose3D.scale = min(1.6, max(0.55, window.pose3D.scale + delta))
-        touchWindow()
+        scale(delta)
     }
 
     private func adjustYaw(_ delta: Double) {
@@ -323,8 +345,7 @@ struct SpatialRemoteWebWindowView: View {
             return
         }
 
-        window.pose3D.yawDegrees += delta
-        touchWindow()
+        rotate(delta, 0, 0)
     }
 
     private func adjustPitch(_ delta: Double) {
@@ -332,8 +353,15 @@ struct SpatialRemoteWebWindowView: View {
             return
         }
 
-        window.pose3D.pitchDegrees += delta
-        touchWindow()
+        rotate(0, delta, 0)
+    }
+
+    private func adjustRoll(_ delta: Double) {
+        guard !window.locked else {
+            return
+        }
+
+        rotate(0, 0, delta)
     }
 
     private func adjustDepth(_ delta: Double) {
@@ -341,8 +369,15 @@ struct SpatialRemoteWebWindowView: View {
             return
         }
 
-        window.pose3D.z = min(-0.75, max(-2.2, window.pose3D.z + delta))
-        touchWindow()
+        moveDepth(delta)
+    }
+
+    private func adjustSize(widthDelta: Double = 0, heightDelta: Double = 0) {
+        guard !window.locked else {
+            return
+        }
+
+        resize(widthDelta, heightDelta)
     }
 
     private func touchWindow() {
@@ -367,6 +402,10 @@ struct SpatialRemoteWebWindowView: View {
         navigateForward: {},
         reload: {},
         toggleBookmark: {},
-        close: {}
+        close: {},
+        scale: { _ in },
+        rotate: { _, _, _ in },
+        moveDepth: { _ in },
+        resize: { _, _ in }
     )
 }

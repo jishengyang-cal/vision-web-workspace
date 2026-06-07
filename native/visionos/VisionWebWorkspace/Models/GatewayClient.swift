@@ -110,6 +110,15 @@ final class WorkspaceStore: ObservableObject {
         }
     }
 
+    func restoreSavedLayout() {
+        load()
+    }
+
+    func resetLayout() {
+        layout = GatewayLayout.makeDefault(id: layout.id)
+        errorMessage = nil
+    }
+
     func open(kind: String) {
         Task {
             _ = await createWindow(kind: kind, sourceWindow: activeVisibleWindow())
@@ -340,6 +349,19 @@ final class WorkspaceStore: ObservableObject {
         }
     }
 
+    func resize(windowId: String, widthDelta: Double = 0, heightDelta: Double = 0) {
+        updateWindow(windowId: windowId) { window in
+            window.rect.width = min(
+                min(layout.viewport.width, WorkspaceWindowDefaults.maximumWindowWidth),
+                max(window.minSize.width, window.rect.width + widthDelta)
+            )
+            window.rect.height = min(
+                min(layout.viewport.height, WorkspaceWindowDefaults.maximumWindowHeight),
+                max(window.minSize.height, window.rect.height + heightDelta)
+            )
+        }
+    }
+
     private func updateWindow(
         windowId: String,
         allowLocked: Bool = false,
@@ -497,12 +519,19 @@ final class WorkspaceStore: ObservableObject {
 }
 
 extension GatewayLayout {
-    static let `default` = GatewayLayout(
-        id: "local-dev-workspace",
-        name: "Local Dev Workspace",
-        pose: GatewayPose(mode: "head-locked", distanceMeters: 1.25, yawDegrees: 0, pitchDegrees: -2, rollDegrees: 0, smoothing: 0.18),
-        viewport: GatewaySize(width: 1440, height: 900),
-        windows: [
+    static var `default`: GatewayLayout {
+        makeDefault()
+    }
+
+    static func makeDefault(id: String = "local-dev-workspace") -> GatewayLayout {
+        let now = ISO8601DateFormatter().string(from: Date())
+
+        return GatewayLayout(
+            id: id,
+            name: "Local Dev Workspace",
+            pose: GatewayPose(mode: "head-locked", distanceMeters: 1.25, yawDegrees: 0, pitchDegrees: -2, rollDegrees: 0, smoothing: 0.18),
+            viewport: GatewaySize(width: 1440, height: 900),
+            windows: [
             GatewayWindow(
                 id: "terminal",
                 title: "Terminal",
@@ -521,8 +550,8 @@ extension GatewayLayout {
                 locked: false,
                 lockMode: "screen-locked",
                 clipboardPolicy: "platform-default",
-                createdAt: ISO8601DateFormatter().string(from: Date()),
-                updatedAt: ISO8601DateFormatter().string(from: Date())
+                createdAt: now,
+                updatedAt: now
             ),
             GatewayWindow(
                 id: "code",
@@ -542,8 +571,8 @@ extension GatewayLayout {
                 locked: false,
                 lockMode: "screen-locked",
                 clipboardPolicy: "platform-default",
-                createdAt: ISO8601DateFormatter().string(from: Date()),
-                updatedAt: ISO8601DateFormatter().string(from: Date())
+                createdAt: now,
+                updatedAt: now
             ),
             GatewayWindow(
                 id: "browser",
@@ -563,12 +592,13 @@ extension GatewayLayout {
                 locked: false,
                 lockMode: "screen-locked",
                 clipboardPolicy: "platform-default",
-                createdAt: ISO8601DateFormatter().string(from: Date()),
-                updatedAt: ISO8601DateFormatter().string(from: Date())
+                createdAt: now,
+                updatedAt: now
             )
-        ],
-        bookmarks: [],
-        activeWindowId: "terminal",
-        updatedAt: ISO8601DateFormatter().string(from: Date())
-    )
+            ],
+            bookmarks: [],
+            activeWindowId: "terminal",
+            updatedAt: now
+        )
+    }
 }

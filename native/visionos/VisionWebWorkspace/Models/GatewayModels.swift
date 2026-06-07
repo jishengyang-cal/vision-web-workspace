@@ -115,6 +115,8 @@ enum WorkspaceWindowDefaults {
     static let minimumOpacity = 0.25
     static let maximumOpacity = 1.0
     static let defaultOpacity = 0.92
+    static let maximumWindowWidth = 1200.0
+    static let maximumWindowHeight = 820.0
 
     static func pose3D(index: Int) -> GatewayWindowPose3D {
         let column = index % 3

@@ -498,6 +498,19 @@ if (!windowManager.includes('"navigate-back"') || !windowManager.includes('"togg
   violations.push("window manager must own shell navigation and bookmark actions");
 }
 
+const nativeWorkspaceMenu = readFileSync("native/visionos/VisionWebWorkspace/Views/WorkspaceMenuBarView.swift", "utf8");
+if (!nativeWorkspaceMenu.includes("restoreSavedLayout") || !nativeWorkspaceMenu.includes("resetLayout")) {
+  violations.push("native mixed workspace menu must expose layout restore and reset controls");
+}
+if (!nativeWorkspaceMenu.includes("navigateBack") || !nativeWorkspaceMenu.includes("toggleBookmark") || !nativeWorkspaceMenu.includes("setLockMode")) {
+  violations.push("native mixed workspace menu must expose active-window navigation, bookmark, and lock-mode controls");
+}
+
+const spatialRemoteWindow = readFileSync("native/visionos/VisionWebWorkspace/Views/SpatialRemoteWebWindowView.swift", "utf8");
+if (!spatialRemoteWindow.includes("Roll -") || !spatialRemoteWindow.includes("Width +") || !spatialRemoteWindow.includes("Height +")) {
+  violations.push("spatial remote web window must expose roll and size controls");
+}
+
 const releaseInterface = JSON.parse(readFileSync("mcp/interfaces/app-store-release.json", "utf8"));
 if (releaseInterface.currentReleaseMode !== "implementation-first-account-review-hold") {
   violations.push("App Store release interface must expose the current Apple account review hold mode");

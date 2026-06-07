@@ -22,47 +22,60 @@ struct WorkspaceMenuBarView: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Remote Web Workspace")
-                    .font(.headline)
-                Text("\(store.layout.windows.count)/\(WorkspaceWindowDefaults.maximumWindowCount) screen-locked windows")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Remote Web Workspace")
+                        .font(.headline)
+                    Text("\(store.layout.windows.count)/\(WorkspaceWindowDefaults.maximumWindowCount) screen-locked windows")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Divider()
+                    .frame(height: 42)
+
+                windowButton("Terminal", kind: "terminal")
+                windowButton("Code", kind: "code")
+                windowButton("Browser", kind: "browser")
+                windowButton("Docs", kind: "docs")
+                windowButton("Logs", kind: "logs")
+
+                Divider()
+                    .frame(height: 42)
+
+                Button("Save") {
+                    store.save()
+                }
+
+                Button("Restore") {
+                    store.restoreSavedLayout()
+                }
+
+                Button("Reset") {
+                    store.resetLayout()
+                }
+
+                Button("Copy Diagnostics") {
+                    copyDiagnostics()
+                }
+
+                if let activeWindow {
+                    Divider()
+                        .frame(height: 42)
+                    activeWindowControls(activeWindow)
+                }
+
+                if let errorMessage = store.errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
-
-            Divider()
-                .frame(height: 42)
-
-            windowButton("Terminal", kind: "terminal")
-            windowButton("Code", kind: "code")
-            windowButton("Browser", kind: "browser")
-            windowButton("Docs", kind: "docs")
-            windowButton("Logs", kind: "logs")
-
-            Button("Save") {
-                store.save()
-            }
-
-            Button("Copy Diagnostics") {
-                copyDiagnostics()
-            }
-
-            Spacer(minLength: 12)
-
-            if let activeWindow {
-                activeWindowControls(activeWindow)
-            }
-
-            if let errorMessage = store.errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .glassBackgroundEffect()
@@ -82,6 +95,24 @@ struct WorkspaceMenuBarView: View {
                 .lineLimit(1)
                 .frame(width: 96, alignment: .trailing)
 
+            Button("Back") {
+                store.navigateBack(windowId: window.id)
+            }
+            .disabled(!canGoBack(window))
+
+            Button("Forward") {
+                store.navigateForward(windowId: window.id)
+            }
+            .disabled(!canGoForward(window))
+
+            Button("Reload") {
+                store.reload(windowId: window.id)
+            }
+
+            Button(window.bookmarkId == nil ? "Bookmark" : "Unsave") {
+                store.toggleBookmark(windowId: window.id)
+            }
+
             Slider(
                 value: Binding(
                     get: { window.opacity },
@@ -91,6 +122,20 @@ struct WorkspaceMenuBarView: View {
                 step: 0.05
             )
             .frame(width: 120)
+
+            Picker(
+                "Lock mode",
+                selection: Binding(
+                    get: { window.lockMode },
+                    set: { store.setLockMode(windowId: window.id, lockMode: $0) }
+                )
+            ) {
+                Text("screen").tag("screen-locked")
+                Text("world").tag("world-locked")
+                Text("free").tag("unlocked")
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 190)
 
             Button(window.locked ? "Unlock" : "Lock") {
                 store.toggleEditLock(windowId: window.id)
@@ -127,6 +172,18 @@ struct WorkspaceMenuBarView: View {
         #else
         store.errorMessage = "Clipboard unavailable"
         #endif
+    }
+
+    private func canGoBack(_ window: GatewayWindow) -> Bool {
+        (window.navigation?.currentIndex ?? 0) > 0
+    }
+
+    private func canGoForward(_ window: GatewayWindow) -> Bool {
+        guard let navigation = window.navigation else {
+            return false
+        }
+
+        return navigation.currentIndex < navigation.entries.count - 1
     }
 }
 
