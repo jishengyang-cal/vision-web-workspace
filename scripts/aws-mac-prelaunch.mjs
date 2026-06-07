@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import process from "node:process";
 
 const profile = process.env.AWS_PROFILE ?? "vision-mac-builder";
-const region = process.env.AWS_REGION ?? "us-east-2";
+const region = process.env.AWS_REGION ?? "us-west-2";
 
 const steps = [
   {
@@ -95,20 +95,20 @@ function printNextAction(output) {
   if (/sso|token has expired|retrieving token/i.test(output)) {
     console.error("Next action: refresh the AWS SSO token, then rerun this checklist:");
     console.error(`AWS_PROFILE=${profile} aws sso login --profile ${profile} --no-browser`);
-    console.error("AWS_PROFILE=vision-mac-builder AWS_REGION=us-east-2 pnpm aws:mac:worker:prelaunch");
+    console.error("AWS_PROFILE=vision-mac-builder AWS_REGION=us-west-2 pnpm aws:mac:worker:prelaunch");
     return;
   }
 
   if (/budget/i.test(output)) {
     console.error("Next action: verify the budget guard or deploy the baseline stack before launch:");
-    console.error("AWS_PROFILE=vision-mac-builder AWS_REGION=us-east-2 pnpm aws:mac:deploy-baseline");
-    console.error("AWS_PROFILE=vision-mac-builder AWS_REGION=us-east-2 pnpm aws:mac:worker:prelaunch");
+    console.error("AWS_PROFILE=vision-mac-builder AWS_REGION=us-west-2 pnpm aws:mac:deploy-baseline");
+    console.error("AWS_PROFILE=vision-mac-builder AWS_REGION=us-west-2 pnpm aws:mac:worker:prelaunch");
     return;
   }
 
   if (/stack|BuilderInstanceProfileName|ArtifactBucketName/i.test(output)) {
     console.error("Next action: deploy or repair the baseline CloudFormation stack:");
-    console.error("AWS_PROFILE=vision-mac-builder AWS_REGION=us-east-2 pnpm aws:mac:deploy-baseline");
+    console.error("AWS_PROFILE=vision-mac-builder AWS_REGION=us-west-2 pnpm aws:mac:deploy-baseline");
     return;
   }
 

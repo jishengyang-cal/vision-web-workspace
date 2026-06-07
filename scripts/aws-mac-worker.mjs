@@ -43,7 +43,7 @@ function loadConfig() {
 
   return {
     profile: process.env.AWS_PROFILE ?? fileConfig.profile ?? "vision-mac-builder",
-    region: process.env.AWS_REGION ?? fileConfig.region ?? "us-east-2",
+    region: process.env.AWS_REGION ?? fileConfig.region ?? "us-west-2",
     environment: process.env.AWS_MAC_BUILDER_ENV ?? fileConfig.environment ?? "dev",
     monthlyBudgetLimitUsd: Number(process.env.AWS_BUDGET_LIMIT_USD ?? fileConfig.monthlyBudgetLimitUsd ?? 100),
     budgetName:

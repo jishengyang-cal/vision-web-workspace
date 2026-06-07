@@ -304,6 +304,12 @@ const macBuilderBootstrap = readFileSync("scripts/mac-builder-bootstrap.sh", "ut
 if (!macBuilderBootstrap.includes("mac-builder-bootstrap must run on macOS")) {
   violations.push("Mac builder bootstrap must refuse non-macOS execution");
 }
+if (!macBuilderBootstrap.includes("MAC_BUILDER_SERVICE_MODE") || !macBuilderBootstrap.includes("LaunchDaemons")) {
+  violations.push("Mac builder bootstrap must support headless EC2 Mac LaunchDaemon mode");
+}
+if (!macBuilderBootstrap.includes("MAC_BUILDER_TOKEN") || !macBuilderBootstrap.includes("<key>PATH</key>")) {
+  violations.push("Mac builder bootstrap must support token-gated agent startup with an explicit tool PATH");
+}
 
 const macBuilderInstallXcode = readFileSync("scripts/mac-builder-install-xcode.sh", "utf8");
 if (!macBuilderInstallXcode.includes("XCODE_XIP_PATH") || !macBuilderInstallXcode.includes("XCODE_S3_URI")) {

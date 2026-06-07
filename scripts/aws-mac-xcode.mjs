@@ -5,7 +5,7 @@ import process from "node:process";
 const command = process.argv[2] ?? "help";
 const config = {
   profile: process.env.AWS_PROFILE ?? "vision-mac-builder",
-  region: process.env.AWS_REGION ?? "us-east-2",
+  region: process.env.AWS_REGION ?? "us-west-2",
   stackName: process.env.AWS_MAC_BUILDER_STACK_NAME ?? "vision-web-workspace-mac-builder-baseline-dev",
   xcodePath: process.env.XCODE_XIP_PATH ?? "",
   key: process.env.XCODE_S3_KEY ?? "toolchains/Xcode.xip"

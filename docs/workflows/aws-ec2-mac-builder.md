@@ -87,7 +87,7 @@ Run this checklist after AWS approves the EC2 Mac quota and before allocating
 the first host:
 
 ```bash
-AWS_PROFILE=vision-mac-builder AWS_REGION=us-east-2 pnpm aws:mac:worker:prelaunch
+AWS_PROFILE=vision-mac-builder AWS_REGION=us-west-2 pnpm aws:mac:worker:prelaunch
 ```
 
 The checklist is read-only. It does not allocate a Dedicated Host, launch an
@@ -99,9 +99,9 @@ Required gates:
 1. Local launch plan: confirm region, instance type, macOS AMI family, the
    24-hour EC2 Mac host minimum, and the guarded launch command.
 2. AWS identity and region: confirm the SSO profile, account identity, and
-   `us-east-2` region access.
-3. Existing Mac resource inventory: confirm there is no already-allocated EC2
-   Mac Dedicated Host or running/stopped Mac instance in the region.
+   `us-west-2` region access.
+3. Existing Mac resource inventory: confirm whether a Mac Dedicated Host or
+   running/stopped Mac instance already exists in the region.
 4. EC2 Mac quota status: confirm the approved quota value is visible through
    Service Quotas for the selected instance family.
 5. Monthly budget and live cost status: confirm the configured 100 USD budget
@@ -122,7 +122,7 @@ AWS_PROFILE=vision-mac-builder aws sso login --profile vision-mac-builder --no-b
 If it fails because the baseline stack or budget is missing, run:
 
 ```bash
-AWS_PROFILE=vision-mac-builder AWS_REGION=us-east-2 pnpm aws:mac:deploy-baseline
+AWS_PROFILE=vision-mac-builder AWS_REGION=us-west-2 pnpm aws:mac:deploy-baseline
 ```
 
 Teardown is explicit and guarded:
@@ -235,6 +235,28 @@ Repository bootstrap script:
 scripts/mac-builder-bootstrap.sh
 ```
 
+On headless EC2 Mac workers, run the agent as a system LaunchDaemon instead of
+a user LaunchAgent. This keeps the builder available after SSH/SSM sessions
+close and allows the API token to be injected through launchd:
+
+```bash
+MAC_BUILDER_SERVICE_MODE=daemon \
+MAC_BUILDER_SERVICE_USER=ec2-user \
+MAC_BUILDER_TOKEN=<generated builder token> \
+REPO_URL=https://github.com/jishengyang-cal/vision-web-workspace.git \
+scripts/mac-builder-bootstrap.sh
+```
+
+The local operator stores the matching client configuration outside git:
+
+```bash
+. .run/aws-mac-builder/mac-builder.env
+pnpm visionos:mac-build:check
+```
+
+`.run/` is ignored. Do not commit the token, the port-forward PID files, or
+build artifacts.
+
 Full Xcode is installed only from an Apple-provided `Xcode.xip` that you place
 on the host or in the private artifact bucket:
 
@@ -274,6 +296,15 @@ VISIONOS_CONFIGURATION=Debug \
 VISIONOS_DESTINATION="platform=visionOS Simulator,name=Apple Vision Pro" \
 VISIONOS_SDK=xrsimulator \
 pnpm visionos:mac-build:check
+```
+
+Current dev-worker connection shape:
+
+```text
+region: us-west-2
+instance: stored only in .run/aws-mac-builder/mac-builder.env
+local builder URL: http://127.0.0.1:3201 through SSM port forwarding
+agent service: /Library/LaunchDaemons/com.visionwebworkspace.mac-builder-agent.plist
 ```
 
 Request lifecycle:
