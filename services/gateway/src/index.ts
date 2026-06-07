@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   createDefaultWindowPose3D,
   createDefaultLayout,
+  createWindowNavigation,
   defaultWindowOpacity,
   isSessionKind,
   maxWindowOpacity,
@@ -15,6 +16,7 @@ import {
   type SaveWorkspaceLayoutResponse,
   type RemoteSessionSpec,
   type SessionKind,
+  type WorkspaceBookmarkSpec,
   type WebWindowSpec,
   type WorkspaceLayoutSpec
 } from "@vision-web-workspace/contracts";
@@ -122,6 +124,7 @@ function normalizeLayout(workspaceId: string, layout: WorkspaceLayoutSpec): Work
   return {
     ...layout,
     id: workspaceId,
+    bookmarks: (layout.bookmarks ?? []).map(normalizeBookmark),
     windows: layout.windows
       .slice(0, maxWorkspaceWindows)
       .map((window, index) => normalizeWindow(window, index)),
@@ -131,11 +134,14 @@ function normalizeLayout(workspaceId: string, layout: WorkspaceLayoutSpec): Work
 
 function normalizeWindow(window: WebWindowSpec, index: number): WebWindowSpec {
   const now = new Date().toISOString();
+  const url = normalizeUrl(window.url);
 
   return {
     ...window,
+    url,
     surfaceMode: window.surfaceMode ?? "direct-web",
     bookmarkId: window.bookmarkId ?? null,
+    navigation: normalizeNavigation(window.navigation, url),
     opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
     pose3D: window.pose3D ?? createDefaultWindowPose3D(index),
     minimized: window.minimized ?? false,
@@ -144,6 +150,48 @@ function normalizeWindow(window: WebWindowSpec, index: number): WebWindowSpec {
     createdAt: window.createdAt ?? now,
     updatedAt: now
   };
+}
+
+function normalizeBookmark(bookmark: WorkspaceBookmarkSpec): WorkspaceBookmarkSpec {
+  const now = bookmark.updatedAt ?? new Date().toISOString();
+  return {
+    ...bookmark,
+    url: normalizeUrl(bookmark.url),
+    createdAt: bookmark.createdAt ?? now,
+    updatedAt: now
+  };
+}
+
+function normalizeNavigation(
+  navigation: WebWindowSpec["navigation"] | undefined,
+  currentUrl: string
+): WebWindowSpec["navigation"] {
+  const entries = navigation?.entries?.length
+    ? navigation.entries.map(normalizeUrl)
+    : [currentUrl];
+  const currentIndex = clamp(navigation?.currentIndex ?? entries.length - 1, 0, entries.length - 1);
+
+  if (entries[currentIndex] !== currentUrl) {
+    return {
+      entries: [...entries.slice(0, currentIndex + 1), currentUrl],
+      currentIndex: currentIndex + 1,
+      reloadToken: navigation?.reloadToken ?? 0
+    };
+  }
+
+  return {
+    entries,
+    currentIndex,
+    reloadToken: navigation?.reloadToken ?? 0
+  };
+}
+
+function normalizeUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  return `https://${url}`;
 }
 
 function createSession(request: CreateSessionRequest): RemoteSessionSpec {

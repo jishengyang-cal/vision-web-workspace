@@ -44,6 +44,18 @@ struct FollowWorkspaceImmersiveView: View {
                         restore: {
                             store.restore(windowId: window.id)
                         },
+                        navigateBack: {
+                            store.navigateBack(windowId: window.id)
+                        },
+                        navigateForward: {
+                            store.navigateForward(windowId: window.id)
+                        },
+                        reload: {
+                            store.reload(windowId: window.id)
+                        },
+                        toggleBookmark: {
+                            store.toggleBookmark(windowId: window.id)
+                        },
                         close: {
                             store.close(windowId: window.id)
                         }

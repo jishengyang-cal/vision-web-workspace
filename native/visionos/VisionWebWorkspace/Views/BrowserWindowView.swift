@@ -28,7 +28,7 @@ struct BrowserWindowView: View {
             }
             .padding(12)
 
-            WebSurfaceView(urlString: window.url)
+            WebSurfaceView(urlString: window.url, reloadToken: window.navigation?.reloadToken ?? 0)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 370, height: 650)
@@ -54,6 +54,11 @@ struct BrowserWindowView: View {
 #if canImport(UIKit) && canImport(WebKit)
 struct WebSurfaceView: UIViewRepresentable {
     let urlString: String
+    let reloadToken: Int
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -62,10 +67,17 @@ struct WebSurfaceView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
         load(urlString, into: webView)
+        context.coordinator.lastReloadToken = reloadToken
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        if context.coordinator.lastReloadToken != reloadToken {
+            context.coordinator.lastReloadToken = reloadToken
+            webView.reload()
+            return
+        }
+
         guard webView.url?.absoluteString != normalizedURL?.absoluteString else {
             return
         }
@@ -86,10 +98,15 @@ struct WebSurfaceView: UIViewRepresentable {
         }
         webView.load(URLRequest(url: url))
     }
+
+    final class Coordinator {
+        var lastReloadToken = 0
+    }
 }
 #else
 struct WebSurfaceView: View {
     let urlString: String
+    let reloadToken: Int
 
     var body: some View {
         Text(urlString)

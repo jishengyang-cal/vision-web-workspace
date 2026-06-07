@@ -10,6 +10,10 @@ struct SpatialRemoteWebWindowView: View {
     let newWindow: () -> Void
     let minimize: () -> Void
     let restore: () -> Void
+    let navigateBack: () -> Void
+    let navigateForward: () -> Void
+    let reload: () -> Void
+    let toggleBookmark: () -> Void
     let close: () -> Void
 
     @State private var address = ""
@@ -36,6 +40,20 @@ struct SpatialRemoteWebWindowView: View {
             titlebar
 
             HStack(spacing: 8) {
+                Button("Back") {
+                    navigateBack()
+                }
+                .disabled(!canGoBack)
+
+                Button("Forward") {
+                    navigateForward()
+                }
+                .disabled(!canGoForward)
+
+                Button("Reload") {
+                    reload()
+                }
+
                 TextField("URL", text: $address)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(loadAddress)
@@ -47,12 +65,16 @@ struct SpatialRemoteWebWindowView: View {
                 Button("Copy URL") {
                     copyURL()
                 }
+
+                Button(window.bookmarkId == nil ? "Save" : "Saved") {
+                    toggleBookmark()
+                }
             }
             .padding(10)
 
             controls
 
-            WebSurfaceView(urlString: window.url)
+            WebSurfaceView(urlString: window.url, reloadToken: window.navigation?.reloadToken ?? 0)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: CGFloat(window.rect.width), height: CGFloat(window.rect.height))
@@ -226,9 +248,57 @@ struct SpatialRemoteWebWindowView: View {
         }
     }
 
+    private var canGoBack: Bool {
+        (window.navigation?.currentIndex ?? 0) > 0
+    }
+
+    private var canGoForward: Bool {
+        guard let navigation = window.navigation else {
+            return false
+        }
+
+        return navigation.currentIndex < navigation.entries.count - 1
+    }
+
     private func loadAddress() {
-        window.url = normalizedAddress(address)
+        let nextURL = normalizedAddress(address)
+        let navigation = normalizedNavigation()
+        if navigation.entries[navigation.currentIndex] == nextURL {
+            window.url = nextURL
+            window.navigation = navigation
+            touchWindow()
+            return
+        }
+
+        var entries = Array(navigation.entries.prefix(navigation.currentIndex + 1))
+        entries.append(nextURL)
+        window.url = nextURL
+        window.bookmarkId = nil
+        window.navigation = GatewayWindowNavigation(
+            entries: entries,
+            currentIndex: entries.count - 1,
+            reloadToken: navigation.reloadToken
+        )
         touchWindow()
+    }
+
+    private func normalizedNavigation() -> GatewayWindowNavigation {
+        guard let navigation = window.navigation, !navigation.entries.isEmpty else {
+            return GatewayWindowNavigation(entries: [window.url], currentIndex: 0, reloadToken: 0)
+        }
+
+        let currentIndex = min(max(0, navigation.currentIndex), navigation.entries.count - 1)
+        if navigation.entries[currentIndex] == window.url {
+            return GatewayWindowNavigation(
+                entries: navigation.entries,
+                currentIndex: currentIndex,
+                reloadToken: navigation.reloadToken
+            )
+        }
+
+        var entries = Array(navigation.entries.prefix(currentIndex + 1))
+        entries.append(window.url)
+        return GatewayWindowNavigation(entries: entries, currentIndex: entries.count - 1, reloadToken: navigation.reloadToken)
     }
 
     private func normalizedAddress(_ rawValue: String) -> String {
@@ -293,6 +363,10 @@ struct SpatialRemoteWebWindowView: View {
         newWindow: {},
         minimize: {},
         restore: {},
+        navigateBack: {},
+        navigateForward: {},
+        reload: {},
+        toggleBookmark: {},
         close: {}
     )
 }

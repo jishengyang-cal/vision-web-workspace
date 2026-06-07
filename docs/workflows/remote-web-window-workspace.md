@@ -109,6 +109,7 @@ RemoteWebWindow
   kind
   url
   bookmarkId
+  navigation
   surfaceMode: direct-web | remote-stream
   opacity
   rect2D
@@ -123,6 +124,22 @@ RemoteWebWindow
   createdAt
   updatedAt
 ```
+
+The workspace layout also owns bookmarks:
+
+```text
+WorkspaceBookmark
+  id
+  title
+  kind
+  url
+  createdAt
+  updatedAt
+```
+
+Navigation history is app-owned shell state. It tracks URLs entered through the
+app toolbar and bookmark openings; it is not an attempt to inspect or own the
+remote server's internal application state.
 
 Opacity is a first-class window property. Recommended behavior:
 
@@ -174,6 +191,8 @@ Minimum controls:
 - new Docs surface
 - new Logs surface
 - bookmarks
+- back / forward / reload
+- save or remove bookmark for the active URL
 - layout save
 - layout restore/reset
 - active window opacity
@@ -222,7 +241,8 @@ and renders them as windows.
 ## Immediate construction sequence
 
 1. Extend shared contracts with remote web window opacity, surface mode,
-   bookmark references, 3D pose, minimized state, and lock mode.
+   bookmark references, navigation state, 3D pose, minimized state, and lock
+   mode.
 2. Add max-10 window enforcement in the window manager and gateway.
 3. Implement Native Web Window Mode for real system window behavior, keyboard,
    dictation, copy/paste, bookmarks, navigation, and opacity.

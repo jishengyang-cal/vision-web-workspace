@@ -14,6 +14,7 @@ import {
   maxWorkspaceWindows,
   minWindowOpacity,
   type WebWindowSpec,
+  type WorkspaceBookmarkSpec,
   type WindowLockMode,
   type WindowKind,
   type WorkspaceLayoutSpec
@@ -111,6 +112,35 @@ export function App() {
     });
   }
 
+  async function createWindowFromBookmark(bookmark: WorkspaceBookmarkSpec) {
+    if (state.windows.length >= maxWorkspaceWindows) {
+      return;
+    }
+
+    const id = `${bookmark.kind}-${Date.now()}`;
+    const window = createWebWindow({
+        id,
+        kind: bookmark.kind,
+        title: bookmark.title,
+        url: bookmark.url,
+        rect: {
+          x: 160,
+          y: 130,
+          width: bookmark.kind === "code" ? 760 : 640,
+          height: bookmark.kind === "code" ? 520 : 400
+        },
+        opacity: defaultWindowOpacity
+      });
+
+    dispatch({
+      type: "create",
+      window: {
+        ...window,
+        bookmarkId: bookmark.id
+      }
+    });
+  }
+
   function resetLayout() {
     localStorage.removeItem(storageKey);
     dispatch({ type: "restore", layout: initialLayout });
@@ -155,6 +185,24 @@ export function App() {
           <div className="limit-note">
             {state.windows.length}/{maxWorkspaceWindows} windows
           </div>
+        </div>
+
+        <div className="tool-group">
+          <div className="section-label">Bookmarks</div>
+          {state.bookmarks.length === 0 ? (
+            <div className="limit-note">No saved surfaces</div>
+          ) : (
+            state.bookmarks.map((bookmark) => (
+              <button
+                disabled={state.windows.length >= maxWorkspaceWindows}
+                key={bookmark.id}
+                onClick={() => void createWindowFromBookmark(bookmark)}
+                title={bookmark.url}
+              >
+                {bookmark.title}
+              </button>
+            ))
+          )}
         </div>
 
         <div className="tool-group">
@@ -434,11 +482,38 @@ function SpatialWindow({
       </div>
 
       <form className="addressbar" onSubmit={submitUrl}>
+        <button
+          disabled={!canGoBack(webWindow)}
+          onClick={() => dispatch({ type: "navigate-back", windowId: webWindow.id })}
+          type="button"
+        >
+          Back
+        </button>
+        <button
+          disabled={!canGoForward(webWindow)}
+          onClick={() => dispatch({ type: "navigate-forward", windowId: webWindow.id })}
+          type="button"
+        >
+          Forward
+        </button>
+        <button
+          onClick={() => dispatch({ type: "reload", windowId: webWindow.id })}
+          type="button"
+        >
+          Reload
+        </button>
         <input
           value={draftUrl}
           onChange={(event) => setDraftUrl(event.currentTarget.value)}
         />
         <button>Go</button>
+        <button
+          aria-label={`Bookmark ${webWindow.title}`}
+          onClick={() => dispatch({ type: "toggle-bookmark", windowId: webWindow.id })}
+          type="button"
+        >
+          {webWindow.bookmarkId ? "Saved" : "Save"}
+        </button>
       </form>
 
       <div className="window-controls">
@@ -486,6 +561,7 @@ function SpatialWindow({
         {inputLocked ? <div className="frame-shield" /> : null}
         <iframe
           allow="clipboard-read; clipboard-write; fullscreen"
+          key={`${webWindow.id}:${webWindow.url}:${webWindow.navigation.reloadToken}`}
           referrerPolicy="no-referrer"
           src={webWindow.url}
           title={webWindow.title}
@@ -499,4 +575,12 @@ function SpatialWindow({
       />
     </article>
   );
+}
+
+function canGoBack(webWindow: WebWindowSpec): boolean {
+  return webWindow.navigation.currentIndex > 0;
+}
+
+function canGoForward(webWindow: WebWindowSpec): boolean {
+  return webWindow.navigation.currentIndex < webWindow.navigation.entries.length - 1;
 }

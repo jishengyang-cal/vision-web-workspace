@@ -146,6 +146,78 @@ final class WorkspaceStore: ObservableObject {
         }
     }
 
+    func toggleBookmark(windowId: String) {
+        guard let window = layout.windows.first(where: { $0.id == windowId }) else {
+            return
+        }
+
+        let now = ISO8601DateFormatter().string(from: Date())
+        let existing = (layout.bookmarks ?? []).first { $0.url == window.url }
+
+        if let existing {
+            layout.bookmarks = (layout.bookmarks ?? []).filter { $0.id != existing.id }
+            layout.windows = layout.windows.map { current in
+                var copy = current
+                if copy.bookmarkId == existing.id {
+                    copy.bookmarkId = nil
+                }
+                return copy
+            }
+            touchLayout()
+            return
+        }
+
+        let bookmark = GatewayBookmark(
+            id: "bookmark-\(Int(Date().timeIntervalSince1970 * 1000))",
+            title: window.title,
+            kind: window.kind,
+            url: window.url,
+            createdAt: now,
+            updatedAt: now
+        )
+        layout.bookmarks = (layout.bookmarks ?? []) + [bookmark]
+        updateWindow(windowId: windowId, allowLocked: true) { current in
+            current.bookmarkId = bookmark.id
+        }
+    }
+
+    func navigateBack(windowId: String) {
+        updateWindow(windowId: windowId, allowLocked: true) { window in
+            let navigation = normalizedNavigation(for: window)
+            let index = max(0, navigation.currentIndex - 1)
+            window.navigation = GatewayWindowNavigation(
+                entries: navigation.entries,
+                currentIndex: index,
+                reloadToken: navigation.reloadToken
+            )
+            window.url = navigation.entries[index]
+        }
+    }
+
+    func navigateForward(windowId: String) {
+        updateWindow(windowId: windowId, allowLocked: true) { window in
+            let navigation = normalizedNavigation(for: window)
+            let index = min(navigation.entries.count - 1, navigation.currentIndex + 1)
+            window.navigation = GatewayWindowNavigation(
+                entries: navigation.entries,
+                currentIndex: index,
+                reloadToken: navigation.reloadToken
+            )
+            window.url = navigation.entries[index]
+        }
+    }
+
+    func reload(windowId: String) {
+        updateWindow(windowId: windowId, allowLocked: true) { window in
+            let navigation = normalizedNavigation(for: window)
+            window.navigation = GatewayWindowNavigation(
+                entries: navigation.entries,
+                currentIndex: navigation.currentIndex,
+                reloadToken: navigation.reloadToken + 1
+            )
+        }
+    }
+
     func focus(windowId: String) {
         guard layout.windows.first(where: { $0.id == windowId })?.minimized != true else {
             return
@@ -291,6 +363,7 @@ final class WorkspaceStore: ObservableObject {
             url: session.url,
             surfaceMode: session.mode ?? "direct-web",
             bookmarkId: nil,
+            navigation: GatewayWindowNavigation(entries: [session.url], currentIndex: 0, reloadToken: 0),
             opacity: WorkspaceWindowDefaults.defaultOpacity,
             rect: placement.rect,
             pose3D: placement.pose3D,
@@ -365,6 +438,29 @@ final class WorkspaceStore: ObservableObject {
     private func touchLayout() {
         layout.updatedAt = ISO8601DateFormatter().string(from: Date())
     }
+
+    private func normalizedNavigation(for window: GatewayWindow) -> GatewayWindowNavigation {
+        guard let navigation = window.navigation, !navigation.entries.isEmpty else {
+            return GatewayWindowNavigation(entries: [window.url], currentIndex: 0, reloadToken: 0)
+        }
+
+        let currentIndex = min(max(0, navigation.currentIndex), navigation.entries.count - 1)
+        if navigation.entries[currentIndex] == window.url {
+            return GatewayWindowNavigation(
+                entries: navigation.entries,
+                currentIndex: currentIndex,
+                reloadToken: navigation.reloadToken
+            )
+        }
+
+        var entries = Array(navigation.entries.prefix(currentIndex + 1))
+        entries.append(window.url)
+        return GatewayWindowNavigation(
+            entries: entries,
+            currentIndex: entries.count - 1,
+            reloadToken: navigation.reloadToken
+        )
+    }
 }
 
 extension GatewayLayout {
@@ -381,6 +477,7 @@ extension GatewayLayout {
                 url: "http://127.0.0.1:7681",
                 surfaceMode: "direct-web",
                 bookmarkId: nil,
+                navigation: GatewayWindowNavigation(entries: ["http://127.0.0.1:7681"], currentIndex: 0, reloadToken: 0),
                 opacity: WorkspaceWindowDefaults.defaultOpacity,
                 rect: GatewayRect(x: 64, y: 88, width: 680, height: 420),
                 pose3D: WorkspaceWindowDefaults.pose3D(index: 0),
@@ -401,6 +498,7 @@ extension GatewayLayout {
                 url: "http://127.0.0.1:8080",
                 surfaceMode: "direct-web",
                 bookmarkId: nil,
+                navigation: GatewayWindowNavigation(entries: ["http://127.0.0.1:8080"], currentIndex: 0, reloadToken: 0),
                 opacity: WorkspaceWindowDefaults.defaultOpacity,
                 rect: GatewayRect(x: 760, y: 88, width: 620, height: 560),
                 pose3D: WorkspaceWindowDefaults.pose3D(index: 1),
@@ -421,6 +519,7 @@ extension GatewayLayout {
                 url: "https://developer.apple.com/visionos/",
                 surfaceMode: "direct-web",
                 bookmarkId: nil,
+                navigation: GatewayWindowNavigation(entries: ["https://developer.apple.com/visionos/"], currentIndex: 0, reloadToken: 0),
                 opacity: WorkspaceWindowDefaults.defaultOpacity,
                 rect: GatewayRect(x: 112, y: 536, width: 560, height: 300),
                 pose3D: WorkspaceWindowDefaults.pose3D(index: 2),
@@ -435,6 +534,7 @@ extension GatewayLayout {
                 updatedAt: ISO8601DateFormatter().string(from: Date())
             )
         ],
+        bookmarks: [],
         activeWindowId: "terminal",
         updatedAt: ISO8601DateFormatter().string(from: Date())
     )

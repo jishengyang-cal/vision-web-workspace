@@ -452,6 +452,9 @@ if (!gateway.includes("maxWorkspaceWindows") || !gateway.includes("defaultWindow
 if (!gateway.includes("minimized")) {
   violations.push("gateway must normalize remote web window minimized state");
 }
+if (!gateway.includes("bookmarks") || !gateway.includes("navigation")) {
+  violations.push("gateway must normalize remote web window bookmarks and navigation state");
+}
 
 const releaseWorkflow = readFileSync("docs/workflows/app-store-release.md", "utf8");
 if (!releaseWorkflow.includes("AppUploader/AppUploader CLI can be evaluated as an optional release-uploader")) {
@@ -465,10 +468,16 @@ const remoteWindowWorkflow = readFileSync("docs/workflows/remote-web-window-work
 if (!remoteWindowWorkflow.includes("centered top bubble") || !remoteWindowWorkflow.includes("side with more available horizontal space")) {
   violations.push("remote web window workflow must document minimize bubbles and smart sibling placement");
 }
+if (!remoteWindowWorkflow.includes("back / forward / reload") || !remoteWindowWorkflow.includes("WorkspaceBookmark")) {
+  violations.push("remote web window workflow must document navigation and bookmark ownership");
+}
 
 const windowManager = readFileSync("packages/window-manager/src/index.ts", "utf8");
 if (!windowManager.includes('"minimize"') || !windowManager.includes('"restore-window"') || !windowManager.includes("placeNewWindow")) {
   violations.push("window manager must own minimize/restore and smart sibling placement");
+}
+if (!windowManager.includes('"navigate-back"') || !windowManager.includes('"toggle-bookmark"')) {
+  violations.push("window manager must own shell navigation and bookmark actions");
 }
 
 const releaseInterface = JSON.parse(readFileSync("mcp/interfaces/app-store-release.json", "utf8"));

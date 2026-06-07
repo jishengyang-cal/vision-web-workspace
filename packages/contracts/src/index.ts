@@ -73,6 +73,21 @@ export interface WindowPose3DSpec extends Vec3 {
   scale: number;
 }
 
+export interface WindowNavigationSpec {
+  entries: string[];
+  currentIndex: number;
+  reloadToken: number;
+}
+
+export interface WorkspaceBookmarkSpec {
+  id: string;
+  title: string;
+  kind: WindowKind;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WebWindowSpec {
   id: string;
   title: string;
@@ -80,6 +95,7 @@ export interface WebWindowSpec {
   url: string;
   surfaceMode: WindowSurfaceMode;
   bookmarkId?: string | null;
+  navigation: WindowNavigationSpec;
   opacity: number;
   rect: Rect;
   pose3D: WindowPose3DSpec;
@@ -100,6 +116,7 @@ export interface WorkspaceLayoutSpec {
   pose: WorkspacePoseSpec;
   viewport: Size;
   windows: WebWindowSpec[];
+  bookmarks: WorkspaceBookmarkSpec[];
   activeWindowId: string | null;
   updatedAt: string;
 }
@@ -342,6 +359,14 @@ export function createDefaultWindowPose3D(index: number): WindowPose3DSpec {
   };
 }
 
+export function createWindowNavigation(url: string): WindowNavigationSpec {
+  return {
+    entries: [url],
+    currentIndex: 0,
+    reloadToken: 0
+  };
+}
+
 export function createDefaultLayout(
   options: {
     terminalUrl?: string;
@@ -357,6 +382,7 @@ export function createDefaultLayout(
     name: "Local Dev Workspace",
     pose: defaultPose,
     viewport: { width: 1440, height: 900 },
+    bookmarks: [],
     activeWindowId: "terminal",
     updatedAt: now,
     windows: [
@@ -367,6 +393,7 @@ export function createDefaultLayout(
         url: options.terminalUrl ?? "http://localhost:7681",
         surfaceMode: "direct-web",
         bookmarkId: null,
+        navigation: createWindowNavigation(options.terminalUrl ?? "http://localhost:7681"),
         opacity: defaultWindowOpacity,
         rect: { x: 64, y: 88, width: 680, height: 420 },
         pose3D: createDefaultWindowPose3D(0),
@@ -387,6 +414,7 @@ export function createDefaultLayout(
         url: options.codeUrl ?? "http://localhost:8080",
         surfaceMode: "direct-web",
         bookmarkId: null,
+        navigation: createWindowNavigation(options.codeUrl ?? "http://localhost:8080"),
         opacity: defaultWindowOpacity,
         rect: { x: 760, y: 88, width: 620, height: 560 },
         pose3D: createDefaultWindowPose3D(1),
@@ -407,6 +435,7 @@ export function createDefaultLayout(
         url: options.browserUrl ?? "https://example.com",
         surfaceMode: "direct-web",
         bookmarkId: null,
+        navigation: createWindowNavigation(options.browserUrl ?? "https://example.com"),
         opacity: defaultWindowOpacity,
         rect: { x: 112, y: 536, width: 560, height: 300 },
         pose3D: createDefaultWindowPose3D(2),

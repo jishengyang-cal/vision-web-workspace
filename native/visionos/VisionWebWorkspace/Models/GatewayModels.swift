@@ -31,6 +31,21 @@ struct GatewayWindowPose3D: Codable, Equatable {
     var scale: Double
 }
 
+struct GatewayWindowNavigation: Codable, Equatable {
+    var entries: [String]
+    var currentIndex: Int
+    var reloadToken: Int
+}
+
+struct GatewayBookmark: Codable, Identifiable, Equatable {
+    var id: String
+    var title: String
+    var kind: String
+    var url: String
+    var createdAt: String
+    var updatedAt: String
+}
+
 struct GatewayWindow: Codable, Identifiable, Equatable {
     var id: String
     var title: String
@@ -38,6 +53,7 @@ struct GatewayWindow: Codable, Identifiable, Equatable {
     var url: String
     var surfaceMode: String
     var bookmarkId: String?
+    var navigation: GatewayWindowNavigation?
     var opacity: Double
     var rect: GatewayRect
     var pose3D: GatewayWindowPose3D
@@ -58,6 +74,7 @@ struct GatewayLayout: Codable, Equatable {
     var pose: GatewayPose
     var viewport: GatewaySize
     var windows: [GatewayWindow]
+    var bookmarks: [GatewayBookmark]?
     var activeWindowId: String?
     var updatedAt: String
 }

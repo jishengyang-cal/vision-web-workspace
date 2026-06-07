@@ -2,12 +2,15 @@ import type {
   Rect,
   Size,
   WebWindowSpec,
+  WindowNavigationSpec,
   WindowLockMode,
   WindowKind,
+  WorkspaceBookmarkSpec,
   WorkspaceLayoutSpec
 } from "@vision-web-workspace/contracts";
 import {
   createDefaultWindowPose3D,
+  createWindowNavigation,
   defaultWindowOpacity,
   maxWindowOpacity,
   maxWorkspaceWindows,
@@ -25,6 +28,10 @@ export type WorkspaceAction =
   | { type: "minimize"; windowId: string }
   | { type: "restore-window"; windowId: string }
   | { type: "set-url"; windowId: string; url: string }
+  | { type: "navigate-back"; windowId: string }
+  | { type: "navigate-forward"; windowId: string }
+  | { type: "reload"; windowId: string }
+  | { type: "toggle-bookmark"; windowId: string }
   | { type: "set-opacity"; windowId: string; opacity: number }
   | { type: "set-lock-mode"; windowId: string; lockMode: WindowLockMode }
   | { type: "toggle-edit-lock"; windowId: string }
@@ -72,11 +79,15 @@ export function workspaceReducer(
     case "restore-window":
       return restoreWindow(state, action.windowId);
     case "set-url":
-      return updateWindow(state, action.windowId, (window) => ({
-        ...window,
-        url: normalizeUrl(action.url),
-        updatedAt: new Date().toISOString()
-      }));
+      return updateWindow(state, action.windowId, (window) => navigateTo(window, action.url));
+    case "navigate-back":
+      return updateWindow(state, action.windowId, navigateBack, { allowLocked: true });
+    case "navigate-forward":
+      return updateWindow(state, action.windowId, navigateForward, { allowLocked: true });
+    case "reload":
+      return updateWindow(state, action.windowId, reloadWindow, { allowLocked: true });
+    case "toggle-bookmark":
+      return toggleBookmark(state, action.windowId);
     case "set-opacity":
       return updateWindow(
         state,
@@ -138,6 +149,7 @@ export function createWebWindow(
     url: normalizeUrl(options.url),
     surfaceMode: "direct-web",
     bookmarkId: null,
+    navigation: createWindowNavigation(normalizeUrl(options.url)),
     opacity: clamp(options.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
     rect: options.rect,
     pose3D: createDefaultWindowPose3D(0),
@@ -214,6 +226,7 @@ function createWindow(
     url: normalizeUrl(window.url),
     surfaceMode: window.surfaceMode ?? "direct-web",
     bookmarkId: window.bookmarkId ?? null,
+    navigation: normalizeNavigation(window.navigation, normalizeUrl(window.url)),
     opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
     rect: placement.rect,
     pose3D: placement.pose3D,
@@ -265,6 +278,129 @@ function minimizeWindow(state: WorkspaceState, windowId: string): WorkspaceState
       ...window,
       focused: window.id === activeWindow?.id
     }))
+  });
+}
+
+function navigateTo(window: WebWindowSpec, rawUrl: string): WebWindowSpec {
+  const url = normalizeUrl(rawUrl);
+  const navigation = normalizeNavigation(window.navigation, window.url);
+  if (navigation.entries[navigation.currentIndex] === url) {
+    return {
+      ...window,
+      url,
+      navigation,
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  const entries = navigation.entries.slice(0, navigation.currentIndex + 1);
+  entries.push(url);
+
+  return {
+    ...window,
+    url,
+    bookmarkId: null,
+    navigation: {
+      entries,
+      currentIndex: entries.length - 1,
+      reloadToken: navigation.reloadToken
+    },
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function navigateBack(window: WebWindowSpec): WebWindowSpec {
+  const navigation = normalizeNavigation(window.navigation, window.url);
+  const currentIndex = Math.max(0, navigation.currentIndex - 1);
+  const url = navigation.entries[currentIndex] ?? window.url;
+
+  return {
+    ...window,
+    url,
+    navigation: {
+      ...navigation,
+      currentIndex
+    },
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function navigateForward(window: WebWindowSpec): WebWindowSpec {
+  const navigation = normalizeNavigation(window.navigation, window.url);
+  const currentIndex = Math.min(navigation.entries.length - 1, navigation.currentIndex + 1);
+  const url = navigation.entries[currentIndex] ?? window.url;
+
+  return {
+    ...window,
+    url,
+    navigation: {
+      ...navigation,
+      currentIndex
+    },
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function reloadWindow(window: WebWindowSpec): WebWindowSpec {
+  const navigation = normalizeNavigation(window.navigation, window.url);
+
+  return {
+    ...window,
+    navigation: {
+      ...navigation,
+      reloadToken: navigation.reloadToken + 1
+    },
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function toggleBookmark(state: WorkspaceState, windowId: string): WorkspaceState {
+  const window = state.windows.find((item) => item.id === windowId);
+  if (!window) {
+    return state;
+  }
+
+  const normalizedUrl = normalizeUrl(window.url);
+  const existing = state.bookmarks.find((bookmark) => bookmark.url === normalizedUrl);
+  const now = new Date().toISOString();
+
+  if (existing) {
+    return stamp({
+      ...state,
+      bookmarks: state.bookmarks.filter((bookmark) => bookmark.id !== existing.id),
+      windows: state.windows.map((item) =>
+        item.bookmarkId === existing.id || item.id === windowId
+          ? {
+              ...item,
+              bookmarkId: item.bookmarkId === existing.id ? null : item.bookmarkId ?? null,
+              updatedAt: item.id === windowId ? now : item.updatedAt ?? now
+            }
+          : item
+      )
+    });
+  }
+
+  const bookmark: WorkspaceBookmarkSpec = {
+    id: `bookmark-${Date.now()}`,
+    title: window.title,
+    kind: window.kind,
+    url: normalizedUrl,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  return stamp({
+    ...state,
+    bookmarks: [...state.bookmarks, bookmark],
+    windows: state.windows.map((item) =>
+      item.id === windowId
+        ? {
+            ...item,
+            bookmarkId: bookmark.id,
+            updatedAt: now
+          }
+        : item
+    )
   });
 }
 
@@ -374,6 +510,7 @@ function normalizeUrl(url: string): string {
 function normalizeLayout(layout: WorkspaceLayoutSpec): WorkspaceLayoutSpec {
   return {
     ...layout,
+    bookmarks: (layout.bookmarks ?? []).map(normalizeBookmark),
     windows: layout.windows
       .slice(0, maxWorkspaceWindows)
       .map((window, index) => normalizeWindow(window, index))
@@ -382,12 +519,14 @@ function normalizeLayout(layout: WorkspaceLayoutSpec): WorkspaceLayoutSpec {
 
 function normalizeWindow(window: WebWindowSpec, index: number): WebWindowSpec {
   const now = window.updatedAt ?? new Date().toISOString();
+  const url = normalizeUrl(window.url);
 
   return {
     ...window,
-    url: normalizeUrl(window.url),
+    url,
     surfaceMode: window.surfaceMode ?? "direct-web",
     bookmarkId: window.bookmarkId ?? null,
+    navigation: normalizeNavigation(window.navigation, url),
     opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
     pose3D: window.pose3D ?? createDefaultWindowPose3D(index),
     minimized: window.minimized ?? false,
@@ -395,6 +534,40 @@ function normalizeWindow(window: WebWindowSpec, index: number): WebWindowSpec {
     clipboardPolicy: window.clipboardPolicy ?? "platform-default",
     createdAt: window.createdAt ?? now,
     updatedAt: now
+  };
+}
+
+function normalizeBookmark(bookmark: WorkspaceBookmarkSpec): WorkspaceBookmarkSpec {
+  const now = bookmark.updatedAt ?? new Date().toISOString();
+  return {
+    ...bookmark,
+    url: normalizeUrl(bookmark.url),
+    createdAt: bookmark.createdAt ?? now,
+    updatedAt: now
+  };
+}
+
+function normalizeNavigation(
+  navigation: WindowNavigationSpec | undefined,
+  currentUrl: string
+): WindowNavigationSpec {
+  const entries = navigation?.entries?.length
+    ? navigation.entries.map(normalizeUrl)
+    : [currentUrl];
+  const currentIndex = clamp(navigation?.currentIndex ?? entries.length - 1, 0, entries.length - 1);
+
+  if (entries[currentIndex] !== currentUrl) {
+    return {
+      entries: [...entries.slice(0, currentIndex + 1), currentUrl],
+      currentIndex: currentIndex + 1,
+      reloadToken: navigation?.reloadToken ?? 0
+    };
+  }
+
+  return {
+    entries,
+    currentIndex,
+    reloadToken: navigation?.reloadToken ?? 0
   };
 }
 

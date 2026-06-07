@@ -48,6 +48,31 @@ test("window chrome can create, minimize, and restore browser-like windows", asy
   await expect(page.getByRole("button", { name: "Restore Terminal", exact: true })).toHaveCount(0);
 });
 
+test("window navigation and bookmarks persist through the workspace shell", async ({ page }) => {
+  await page.goto("/");
+
+  const codeWindow = page.locator(".spatial-window").filter({ hasText: "Code" }).first();
+  const addressInput = codeWindow.locator(".addressbar input");
+
+  await addressInput.fill("example.org");
+  await codeWindow.getByRole("button", { name: "Go", exact: true }).click();
+  await expect(addressInput).toHaveValue("https://example.org");
+
+  await expect(codeWindow.getByRole("button", { name: "Back", exact: true })).toBeEnabled();
+  await codeWindow.getByRole("button", { name: "Back", exact: true }).click();
+  await expect(addressInput).toHaveValue("http://localhost:8080");
+  await expect(codeWindow.getByRole("button", { name: "Forward", exact: true })).toBeEnabled();
+
+  await codeWindow.getByRole("button", { name: "Reload", exact: true }).click();
+  await codeWindow.getByRole("button", { name: "Bookmark Code", exact: true }).click();
+  await expect(codeWindow.getByRole("button", { name: "Bookmark Code", exact: true })).toHaveText("Saved");
+
+  const bookmarks = page.locator(".tool-group").filter({ hasText: "Bookmarks" });
+  await expect(bookmarks.getByRole("button", { name: "Code", exact: true })).toBeVisible();
+  await bookmarks.getByRole("button", { name: "Code", exact: true }).click();
+  await expect(page.locator(".spatial-window")).toHaveCount(4);
+});
+
 test("gateway exposes native workspace layout and session APIs", async ({ request }) => {
   const layoutResponse = await request.get("http://127.0.0.1:3001/workspaces/local-dev-workspace/layout");
   expect(layoutResponse.ok()).toBeTruthy();
@@ -69,10 +94,16 @@ test("gateway exposes native workspace layout and session APIs", async ({ reques
     title: "Browser from Native",
     kind: "browser",
     url: sessionPayload.session.url,
+    navigation: {
+      entries: [sessionPayload.session.url],
+      currentIndex: 0,
+      reloadToken: 0
+    },
     rect: { x: 100, y: 100, width: 420, height: 280 },
     minSize: { width: 320, height: 240 },
     zIndex: 9,
     focused: true,
+    minimized: false,
     locked: false
   });
 

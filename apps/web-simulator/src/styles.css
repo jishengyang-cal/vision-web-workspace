@@ -96,6 +96,13 @@ button:disabled {
   font-size: 12px;
 }
 
+.section-label {
+  color: #d7e1ea;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .sim-stage {
   position: relative;
   overflow: hidden;
@@ -268,7 +275,7 @@ button:disabled {
 
 .addressbar {
   display: grid;
-  grid-template-columns: 1fr 48px;
+  grid-template-columns: repeat(3, auto) minmax(0, 1fr) auto auto;
   gap: 8px;
   padding: 6px 8px;
   background: #151b22;
