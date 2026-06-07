@@ -169,6 +169,8 @@ const requiredFiles = [
   "native/visionos/VisionWebWorkspace/VisionWebWorkspaceApp.swift",
   "native/visionos/VisionWebWorkspace/Models/WorkspacePanelState.swift",
   "native/visionos/VisionWebWorkspace/Models/ImmersiveEnvironmentSceneFactory.swift",
+  "native/visionos/VisionWebWorkspace/Models/OfficeSceneSpec.swift",
+  "native/visionos/VisionWebWorkspace/OfficeSceneSpec.json",
   "native/visionos/VisionWebWorkspace/Models/WaterLoungeSceneSpec.swift",
   "native/visionos/VisionWebWorkspace/WaterLoungeSceneSpec.json",
   "native/visionos/VisionWebWorkspace/Models/GatewayModels.swift",
@@ -432,6 +434,21 @@ const immersiveEnvironmentFactory = readFileSync("native/visionos/VisionWebWorks
 if (!immersiveEnvironmentFactory.includes("buildOffice") || !immersiveEnvironmentFactory.includes("buildLounge")) {
   violations.push("native environment factory must build office and water lounge scenes");
 }
+if (
+  !immersiveEnvironmentFactory.includes("OfficeSceneSpec.load") ||
+  !immersiveEnvironmentFactory.includes("office-reference-desk-top") ||
+  !immersiveEnvironmentFactory.includes("office-reference-concrete-column") ||
+  !immersiveEnvironmentFactory.includes("office-reference-runway-white-left")
+) {
+  violations.push("office scene must be driven by the reference rebuild spec with desk grid, concrete columns, and red-white runway");
+}
+if (
+  !immersiveEnvironmentFactory.includes("office-light-animated-") ||
+  !immersiveEnvironmentFactory.includes("office-runway-animated-") ||
+  !immersiveEnvironmentFactory.includes("animateOfficeEntities")
+) {
+  violations.push("office scene must include animated desk, column, and runway lighting entities");
+}
 if (!immersiveEnvironmentFactory.includes("water-pool") || !immersiveEnvironmentFactory.includes("caustic")) {
   violations.push("water lounge scene must include water pool and caustic reflection layers");
 }
@@ -448,6 +465,17 @@ if (
   !immersiveEnvironmentFactory.includes("lounge-water-animated-")
 ) {
   violations.push("water lounge scene must include animated water and caustic projection entities");
+}
+
+const officeSceneSpec = JSON.parse(readFileSync("native/visionos/VisionWebWorkspace/OfficeSceneSpec.json", "utf8"));
+if (
+  officeSceneSpec.deskGrid?.xPositions?.length < 4 ||
+  officeSceneSpec.deskGrid?.zPositions?.length < 4 ||
+  officeSceneSpec.column?.xPositions?.length < 2 ||
+  officeSceneSpec.runway?.redWidth <= 0 ||
+  officeSceneSpec.props?.includeOperators !== true
+) {
+  violations.push("office reference spec must preserve the repeated desk grid, column rows, runway, and operator placeholders");
 }
 
 const waterLoungeSceneSpec = JSON.parse(readFileSync("native/visionos/VisionWebWorkspace/WaterLoungeSceneSpec.json", "utf8"));

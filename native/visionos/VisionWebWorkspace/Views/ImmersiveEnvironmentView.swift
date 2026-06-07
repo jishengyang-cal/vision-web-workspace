@@ -11,13 +11,13 @@ struct ImmersiveEnvironmentView: View {
         scale: 0.82
     )
     @State private var rootEntity = Entity()
-    @State private var causticBaselines: [String: SIMD3<Float>] = [:]
+    @State private var animationBaselines: [String: SIMD3<Float>] = [:]
 
     var body: some View {
         TimelineView(.animation) { timeline in
             RealityView { content, attachments in
                 rootEntity = ImmersiveEnvironmentSceneFactory.make(kind: kind)
-                causticBaselines.removeAll()
+                animationBaselines.removeAll()
                 content.add(rootEntity)
 
                 if let panel = attachments.entity(for: WorkspaceConstants.panelAttachmentID) {
@@ -25,7 +25,7 @@ struct ImmersiveEnvironmentView: View {
                 }
             } update: { _, attachments in
                 let time = Float(timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 4_096))
-                ImmersiveEnvironmentSceneFactory.update(rootEntity, time: time, baselines: &causticBaselines)
+                ImmersiveEnvironmentSceneFactory.update(rootEntity, time: time, baselines: &animationBaselines)
 
                 if let panel = attachments.entity(for: WorkspaceConstants.panelAttachmentID) {
                     attach(panel)

@@ -2,6 +2,8 @@ import RealityKit
 import UIKit
 
 enum ImmersiveEnvironmentSceneFactory {
+    private static let animatedOfficeLightPrefix = "office-light-animated-"
+    private static let animatedOfficeRunwayPrefix = "office-runway-animated-"
     private static let animatedCausticPrefix = "lounge-caustic-animated-"
     private static let animatedWaterPrefix = "lounge-water-animated-"
 
@@ -20,24 +22,20 @@ enum ImmersiveEnvironmentSceneFactory {
     }
 
     static func update(_ root: Entity, time: Float, baselines: inout [String: SIMD3<Float>]) {
+        animateOfficeEntities(root, time: time, baselines: &baselines)
         animateLoungeEntities(root, time: time, baselines: &baselines)
     }
 
     private static func buildOffice(in root: Entity) {
-        addRoomShell(
-            to: root,
-            width: 10.0,
-            depth: 9.0,
-            height: 4.2,
-            floorMaterial: glossyDarkFloor(),
-            wallMaterial: darkWall(),
-            ceilingMaterial: darkWall()
-        )
+        let spec = OfficeSceneSpec.load()
+        root.name = "ImmersiveEnvironmentRoot-office-reference-rebuild"
 
-        addOfficeColumns(to: root)
-        addOfficeDeskGrid(to: root)
-        addCenterRunway(to: root)
-        addWorkspaceAnchorDesk(to: root, position: [0, 0.44, -1.8])
+        addReferenceOfficeShell(to: root, spec: spec)
+        addReferenceOfficeRunway(to: root, spec: spec)
+        addReferenceOfficeColumns(to: root, spec: spec)
+        addReferenceOfficeDeskGrid(to: root, spec: spec)
+        addReferenceOfficeCoatRacks(to: root, spec: spec)
+        addReferenceOfficeAtmosphere(to: root, spec: spec)
     }
 
     private static func buildLounge(in root: Entity) {
@@ -70,43 +68,210 @@ enum ImmersiveEnvironmentSceneFactory {
         addBox(to: root, name: "right-wall", size: [0.05, height, depth], position: [width / 2, height / 2, 0], material: wallMaterial)
     }
 
-    private static func addOfficeColumns(to root: Entity) {
-        for x in [-3.6, 3.6] as [Float] {
-            addBox(to: root, name: "concrete-column", size: [0.58, 4.1, 0.58], position: [x, 2.05, -2.2], material: concrete())
-            addBox(to: root, name: "concrete-column", size: [0.58, 4.1, 0.58], position: [x, 2.05, 1.65], material: concrete())
+    private static func addReferenceOfficeShell(to root: Entity, spec: OfficeSceneSpec) {
+        let room = spec.room
+        addBox(to: root, name: "office-reference-floor", size: [room.width, 0.055, room.depth], position: [0, 0, 0], material: officeBlackFloor())
+        addBox(to: root, name: "office-reference-ceiling", size: [room.width, 0.06, room.depth], position: [0, room.height, 0], material: officeBlackCeiling())
+        addBox(to: root, name: "office-reference-back-wall", size: [room.width, room.height, 0.05], position: [0, room.height / 2, -room.depth / 2], material: officeDeepWall())
+        addBox(to: root, name: "office-reference-front-threshold", size: [room.width, room.height, 0.05], position: [0, room.height / 2, room.depth / 2], material: officeDeepWall())
+        addBox(to: root, name: "office-reference-left-wall", size: [0.05, room.height, room.depth], position: [-room.width / 2, room.height / 2, 0], material: officeDeepWall())
+        addBox(to: root, name: "office-reference-right-wall", size: [0.05, room.height, room.depth], position: [room.width / 2, room.height / 2, 0], material: officeDeepWall())
+        addOfficeFloorRibs(to: root, spec: spec)
+    }
+
+    private static func addOfficeFloorRibs(to root: Entity, spec: OfficeSceneSpec) {
+        let room = spec.room
+        for index in 0..<18 {
+            let x = -room.width / 2 + Float(index) * room.width / 17
+            addBox(
+                to: root,
+                name: "office-reference-floor-rib-\(index)",
+                size: [0.012, 0.01, room.depth],
+                position: [x, 0.035, 0],
+                material: officeFloorRib()
+            )
         }
     }
 
-    private static func addOfficeDeskGrid(to root: Entity) {
-        let xPositions: [Float] = [-3.0, 0.0, 3.0]
-        let zPositions: [Float] = [-3.1, -1.2, 0.7, 2.6]
+    private static func addReferenceOfficeRunway(to root: Entity, spec: OfficeSceneSpec) {
+        let runway = spec.runway
+        let room = spec.room
+        addBox(
+            to: root,
+            name: "\(animatedOfficeRunwayPrefix)red-floor-axis",
+            size: [runway.redWidth, 0.014, runway.length],
+            position: [0, 0.045, -0.05],
+            material: officeRunwayRed()
+        )
+        addBox(
+            to: root,
+            name: "office-reference-runway-white-left",
+            size: [runway.whiteWidth, 0.016, runway.length],
+            position: [-runway.whiteOffset, 0.049, -0.05],
+            material: officeRunwayWhite()
+        )
+        addBox(
+            to: root,
+            name: "office-reference-runway-white-right",
+            size: [runway.whiteWidth, 0.016, runway.length],
+            position: [runway.whiteOffset, 0.049, -0.05],
+            material: officeRunwayWhite()
+        )
+        addBox(
+            to: root,
+            name: "\(animatedOfficeRunwayPrefix)back-wall-red-axis",
+            size: [runway.redWidth * 0.9, room.height - 0.25, 0.018],
+            position: [0, room.height / 2, -room.depth / 2 + 0.055],
+            material: officeRunwayRed()
+        )
+        addBox(
+            to: root,
+            name: "office-reference-back-wall-white-axis-left",
+            size: [runway.whiteWidth, room.height - 0.25, 0.02],
+            position: [-runway.whiteOffset, room.height / 2, -room.depth / 2 + 0.058],
+            material: officeRunwayWhite()
+        )
+        addBox(
+            to: root,
+            name: "office-reference-back-wall-white-axis-right",
+            size: [runway.whiteWidth, room.height - 0.25, 0.02],
+            position: [runway.whiteOffset, room.height / 2, -room.depth / 2 + 0.058],
+            material: officeRunwayWhite()
+        )
+    }
 
-        for z in zPositions {
-            for x in xPositions {
-                addOfficeDesk(to: root, position: [x, 0.43, z])
+    private static func addReferenceOfficeColumns(to root: Entity, spec: OfficeSceneSpec) {
+        var index = 0
+        for x in spec.column.xPositions {
+            for z in spec.column.zPositions {
+                addBox(
+                    to: root,
+                    name: "office-reference-concrete-column-\(index)",
+                    size: [spec.column.width, spec.room.height - 0.12, spec.column.depth],
+                    position: [x, spec.room.height / 2, z],
+                    material: officeRoughConcrete()
+                )
+                addBox(
+                    to: root,
+                    name: "office-reference-concrete-column-band-\(index)-lower",
+                    size: [spec.column.width + 0.03, 0.014, spec.column.depth + 0.03],
+                    position: [x, 1.72, z],
+                    material: officeConcreteSeam()
+                )
+                addBox(
+                    to: root,
+                    name: "office-reference-concrete-column-band-\(index)-upper",
+                    size: [spec.column.width + 0.03, 0.014, spec.column.depth + 0.03],
+                    position: [x, 3.22, z],
+                    material: officeConcreteSeam()
+                )
+                addBox(
+                    to: root,
+                    name: "\(animatedOfficeLightPrefix)column-uplight-\(index)",
+                    size: [spec.lighting.columnGlowWidth, 0.012, spec.lighting.columnGlowWidth],
+                    position: [x, 0.05, z],
+                    material: officeCoolFloorGlow()
+                )
+                index += 1
             }
         }
     }
 
-    private static func addOfficeDesk(to root: Entity, position: SIMD3<Float>) {
-        addBox(to: root, name: "office-desk-top", size: [1.45, 0.08, 0.86], position: position, material: blackGloss())
-        addBox(to: root, name: "office-desk-base", size: [0.58, 0.7, 0.65], position: [position.x, 0.08, position.z], material: blackDeskBase())
-        addBox(to: root, name: "office-chair", size: [0.5, 0.52, 0.48], position: [position.x, 0.28, position.z + 0.66], material: leather())
-        addBox(to: root, name: "desk-lamp-stem", size: [0.04, 0.54, 0.04], position: [position.x + 0.48, 0.76, position.z - 0.18], material: chrome())
-        addBox(to: root, name: "desk-lamp-shade", size: [0.46, 0.08, 0.46], position: [position.x + 0.48, 1.05, position.z - 0.18], material: coolLight())
-        addBox(to: root, name: "terminal-prop", size: [0.42, 0.12, 0.28], position: [position.x - 0.22, 0.54, position.z - 0.08], material: grayMachine())
-        addBox(to: root, name: "paper-stack", size: [0.34, 0.025, 0.24], position: [position.x + 0.12, 0.51, position.z + 0.22], material: paper())
+    private static func addReferenceOfficeDeskGrid(to root: Entity, spec: OfficeSceneSpec) {
+        var index = 0
+        for z in spec.deskGrid.zPositions {
+            for x in spec.deskGrid.xPositions {
+                addReferenceOfficeDesk(to: root, spec: spec, position: [x, spec.desk.topHeight, z], index: index)
+                index += 1
+            }
+        }
     }
 
-    private static func addCenterRunway(to root: Entity) {
-        addBox(to: root, name: "runway-red", size: [0.16, 0.012, 8.0], position: [0, 0.04, -0.2], material: redAccent())
-        addBox(to: root, name: "runway-white-left", size: [0.04, 0.014, 8.0], position: [-0.14, 0.045, -0.2], material: paper())
-        addBox(to: root, name: "runway-white-right", size: [0.04, 0.014, 8.0], position: [0.14, 0.045, -0.2], material: paper())
+    private static func addReferenceOfficeDesk(to root: Entity, spec: OfficeSceneSpec, position: SIMD3<Float>, index: Int) {
+        let desk = spec.desk
+        addBox(to: root, name: "office-reference-desk-top-\(index)", size: [desk.width, desk.topThickness, desk.depth], position: position, material: officeDeskSurface())
+        addBox(to: root, name: "office-reference-desk-base-\(index)", size: [desk.baseWidth, desk.baseHeight, desk.baseDepth], position: [position.x, desk.baseHeight / 2, position.z], material: officeDeskCase())
+        addBox(to: root, name: "office-reference-desk-front-panel-\(index)", size: [desk.width * 0.82, 0.48, 0.04], position: [position.x, 0.39, position.z + desk.depth / 2 - 0.03], material: officeDeskCase())
+        addBox(to: root, name: "office-reference-desk-left-leg-\(index)", size: [0.04, 0.62, 0.04], position: [position.x - desk.width * 0.42, 0.31, position.z + desk.depth * 0.36], material: chrome())
+        addBox(to: root, name: "office-reference-desk-right-leg-\(index)", size: [0.04, 0.62, 0.04], position: [position.x + desk.width * 0.42, 0.31, position.z + desk.depth * 0.36], material: chrome())
+        addBox(
+            to: root,
+            name: "\(animatedOfficeLightPrefix)desk-under-glow-\(index)",
+            size: [spec.lighting.underDeskGlowWidth, 0.012, spec.lighting.underDeskGlowDepth],
+            position: [position.x, 0.048, position.z + 0.08],
+            material: officeCoolFloorGlow()
+        )
+
+        let lampX = position.x + desk.width * 0.3
+        let lampZ = position.z - desk.depth * 0.18
+        addBox(to: root, name: "office-reference-lamp-stem-\(index)", size: [0.035, 0.58, 0.035], position: [lampX, spec.lighting.lampHeight - 0.3, lampZ], material: chrome())
+        addBox(to: root, name: "office-reference-lamp-shade-\(index)", size: [spec.lighting.shadeWidth, 0.085, spec.lighting.shadeDepth], position: [lampX, spec.lighting.lampHeight, lampZ], material: officeLampShade())
+        addBox(
+            to: root,
+            name: "\(animatedOfficeLightPrefix)lamp-pool-\(index)",
+            size: [spec.lighting.shadeWidth * 0.9, 0.012, spec.lighting.shadeDepth * 0.9],
+            position: [lampX, position.y + desk.topThickness / 2 + 0.018, lampZ],
+            material: officeCoolLampGlow()
+        )
+
+        let typewriterX = position.x - desk.width * 0.22
+        addBox(to: root, name: "office-reference-typewriter-base-\(index)", size: [spec.props.typewriterWidth, 0.12, 0.27], position: [typewriterX, position.y + 0.1, position.z - 0.03], material: officeTypewriter())
+        addBox(to: root, name: "office-reference-typewriter-roller-\(index)", size: [spec.props.typewriterWidth * 0.78, 0.045, 0.055], position: [typewriterX, position.y + 0.18, position.z - 0.17], material: blackDeskBase())
+        addBox(to: root, name: "office-reference-paper-stack-\(index)", size: [spec.props.paperWidth, 0.024, 0.24], position: [position.x + 0.08, position.y + 0.055, position.z + 0.17], material: paper())
+        addBox(to: root, name: "office-reference-lamp-cord-\(index)", size: [0.46, 0.012, 0.018], position: [lampX - 0.27, position.y + 0.055, lampZ + 0.24], material: officeCord())
+        addBox(to: root, name: "office-reference-chair-\(index)", size: [0.5, 0.44, 0.46], position: [position.x, 0.32, position.z + desk.depth * 0.86], material: officeChair())
+
+        if spec.props.includeOperators {
+            addReferenceOfficeOperator(to: root, position: [position.x, 0.74, position.z + desk.depth * 0.92], index: index)
+        }
     }
 
-    private static func addWorkspaceAnchorDesk(to root: Entity, position: SIMD3<Float>) {
-        addBox(to: root, name: "workspace-anchor-table", size: [2.2, 0.1, 0.7], position: position, material: blackGloss())
-        addBox(to: root, name: "workspace-anchor-base", size: [0.72, 0.75, 0.52], position: [position.x, 0.1, position.z], material: blackDeskBase())
+    private static func addReferenceOfficeOperator(to root: Entity, position: SIMD3<Float>, index: Int) {
+        addBox(to: root, name: "office-reference-operator-torso-\(index)", size: [0.32, 0.5, 0.18], position: [position.x, position.y + 0.17, position.z], material: officeSuitGray())
+        addBox(to: root, name: "office-reference-operator-shirt-\(index)", size: [0.11, 0.32, 0.02], position: [position.x, position.y + 0.18, position.z - 0.096], material: paper())
+        addBox(to: root, name: "office-reference-operator-tie-\(index)", size: [0.035, 0.32, 0.022], position: [position.x, position.y + 0.11, position.z - 0.11], material: officeRunwayRed())
+        addBox(to: root, name: "office-reference-operator-head-\(index)", size: [0.18, 0.2, 0.16], position: [position.x, position.y + 0.54, position.z - 0.01], material: officeSkin())
+        addBox(to: root, name: "office-reference-operator-hair-\(index)", size: [0.18, 0.04, 0.16], position: [position.x, position.y + 0.66, position.z - 0.01], material: blackDeskBase())
+        addBox(to: root, name: "office-reference-operator-glasses-\(index)", size: [0.17, 0.012, 0.018], position: [position.x, position.y + 0.56, position.z - 0.1], material: blackGloss())
+    }
+
+    private static func addReferenceOfficeCoatRacks(to root: Entity, spec: OfficeSceneSpec) {
+        guard spec.props.includeCoatRacks else { return }
+
+        for side in 0..<2 {
+            let x = side == 0 ? -spec.room.width / 2 + 0.62 : spec.room.width / 2 - 0.62
+            let sideName = side == 0 ? "left" : "right"
+            for index in 0..<spec.deskGrid.zPositions.count {
+                let z = spec.deskGrid.zPositions[index]
+                addBox(to: root, name: "office-reference-\(sideName)-coat-rack-pole-\(index)", size: [0.035, 1.25, 0.035], position: [x, 0.72, z + 0.36], material: chrome())
+                addBox(to: root, name: "office-reference-\(sideName)-coat-rack-arm-\(index)", size: [0.5, 0.03, 0.035], position: [x, 1.32, z + 0.36], material: chrome())
+                addBox(to: root, name: "office-reference-\(sideName)-coat-\(index)", size: [0.34, 0.54, 0.08], position: [x, 1.02, z + 0.48], material: officeCoatTan())
+            }
+        }
+    }
+
+    private static func addReferenceOfficeAtmosphere(to root: Entity, spec: OfficeSceneSpec) {
+        addBox(
+            to: root,
+            name: "office-reference-red-exit-sign",
+            size: [0.48, 0.18, 0.018],
+            position: [0, spec.room.height - 1.18, -spec.room.depth / 2 + 0.06],
+            material: officeExitRed()
+        )
+        addBox(
+            to: root,
+            name: "\(animatedOfficeLightPrefix)back-wall-low-wash-left",
+            size: [2.7, 0.018, 0.018],
+            position: [-3.6, 0.55, -spec.room.depth / 2 + 0.065],
+            material: officeCoolFloorGlow()
+        )
+        addBox(
+            to: root,
+            name: "\(animatedOfficeLightPrefix)back-wall-low-wash-right",
+            size: [2.7, 0.018, 0.018],
+            position: [3.6, 0.55, -spec.room.depth / 2 + 0.065],
+            material: officeCoolFloorGlow()
+        )
     }
 
     private static func addWaterLoungeShell(to root: Entity, spec: WaterLoungeSceneSpec) {
@@ -467,6 +632,40 @@ enum ImmersiveEnvironmentSceneFactory {
         }
     }
 
+    private static func animateOfficeEntities(_ entity: Entity, time: Float, baselines: inout [String: SIMD3<Float>]) {
+        if entity.name.hasPrefix(animatedOfficeLightPrefix) {
+            let baseline = baselinePosition(for: entity, in: &baselines)
+            let phase = animationPhase(for: entity.name)
+            entity.position = baseline + [
+                0,
+                sin(time * 0.8 + phase) * 0.004,
+                0
+            ]
+            entity.scale = [
+                1.0 + sin(time * 0.78 + phase) * 0.08,
+                1.0,
+                1.0 + cos(time * 0.66 + phase) * 0.08
+            ]
+        } else if entity.name.hasPrefix(animatedOfficeRunwayPrefix) {
+            let baseline = baselinePosition(for: entity, in: &baselines)
+            let phase = animationPhase(for: entity.name)
+            entity.position = baseline + [
+                0,
+                sin(time * 0.42 + phase) * 0.003,
+                0
+            ]
+            entity.scale = [
+                1.0 + sin(time * 0.5 + phase) * 0.025,
+                1.0,
+                1.0
+            ]
+        }
+
+        for child in entity.children {
+            animateOfficeEntities(child, time: time, baselines: &baselines)
+        }
+    }
+
     private static func animateLoungeEntities(_ entity: Entity, time: Float, baselines: inout [String: SIMD3<Float>]) {
         if entity.name.hasPrefix(animatedCausticPrefix) {
             let baseline = baselinePosition(for: entity, in: &baselines)
@@ -623,6 +822,26 @@ enum ImmersiveEnvironmentSceneFactory {
     private static func darkLeather() -> SimpleMaterial { simple(0.055, 0.043, 0.035, roughness: 0.36) }
     private static func warmLight() -> UnlitMaterial { unlit(1.0, 0.72, 0.24, 0.88) }
     private static func caustic() -> UnlitMaterial { unlit(1.0, 0.76, 0.24, 0.34) }
+    private static func officeBlackFloor() -> SimpleMaterial { simple(0.01, 0.012, 0.012, roughness: 0.2) }
+    private static func officeBlackCeiling() -> SimpleMaterial { simple(0.006, 0.007, 0.007, roughness: 0.72) }
+    private static func officeDeepWall() -> SimpleMaterial { simple(0.004, 0.007, 0.007, roughness: 0.8) }
+    private static func officeFloorRib() -> SimpleMaterial { simple(0.08, 0.09, 0.09, 0.28, roughness: 0.58) }
+    private static func officeRunwayRed() -> UnlitMaterial { unlit(0.86, 0.02, 0.02, 0.96) }
+    private static func officeRunwayWhite() -> UnlitMaterial { unlit(0.92, 0.9, 0.84, 0.94) }
+    private static func officeDeskSurface() -> SimpleMaterial { simple(0.018, 0.02, 0.02, roughness: 0.13) }
+    private static func officeDeskCase() -> SimpleMaterial { simple(0.012, 0.012, 0.012, roughness: 0.36) }
+    private static func officeRoughConcrete() -> SimpleMaterial { simple(0.42, 0.4, 0.35, roughness: 0.9) }
+    private static func officeConcreteSeam() -> SimpleMaterial { simple(0.22, 0.21, 0.19, roughness: 0.86) }
+    private static func officeCoolFloorGlow() -> UnlitMaterial { unlit(0.62, 0.82, 1.0, 0.42) }
+    private static func officeCoolLampGlow() -> UnlitMaterial { unlit(0.78, 0.92, 1.0, 0.58) }
+    private static func officeLampShade() -> SimpleMaterial { simple(0.72, 0.72, 0.68, roughness: 0.16, metallic: true) }
+    private static func officeTypewriter() -> SimpleMaterial { simple(0.18, 0.2, 0.19, roughness: 0.48) }
+    private static func officeCord() -> SimpleMaterial { simple(0.74, 0.76, 0.72, roughness: 0.6) }
+    private static func officeChair() -> SimpleMaterial { simple(0.48, 0.43, 0.36, roughness: 0.44) }
+    private static func officeSuitGray() -> SimpleMaterial { simple(0.26, 0.27, 0.27, roughness: 0.48) }
+    private static func officeSkin() -> SimpleMaterial { simple(0.64, 0.51, 0.42, roughness: 0.55) }
+    private static func officeCoatTan() -> SimpleMaterial { simple(0.68, 0.58, 0.47, roughness: 0.64) }
+    private static func officeExitRed() -> UnlitMaterial { unlit(0.88, 0.02, 0.02, 0.86) }
     private static func blackWaterBasin() -> SimpleMaterial { simple(0.008, 0.006, 0.004, roughness: 0.28) }
     private static func amberStone() -> SimpleMaterial { simple(0.72, 0.45, 0.16, roughness: 0.5) }
     private static func blackGoldWater() -> SimpleMaterial { simple(0.025, 0.015, 0.006, 0.78, roughness: 0.03) }

@@ -45,6 +45,8 @@ The first implementation is procedural RealityKit source:
 
 ```text
 native/visionos/VisionWebWorkspace/Models/ImmersiveEnvironmentSceneFactory.swift
+native/visionos/VisionWebWorkspace/Models/OfficeSceneSpec.swift
+native/visionos/VisionWebWorkspace/OfficeSceneSpec.json
 native/visionos/VisionWebWorkspace/Models/WaterLoungeSceneSpec.swift
 native/visionos/VisionWebWorkspace/WaterLoungeSceneSpec.json
 native/visionos/VisionWebWorkspace/Views/ImmersiveEnvironmentView.swift
@@ -54,16 +56,24 @@ This gives the Mac Builder a native source target without requiring binary
 assets in the repository. It also creates a clear asset replacement path:
 procedural room blockout first, USDZ/Reality Composer Pro scene second.
 
+The office environment uses a reference-driven scene spec for the room scale,
+desk grid, concrete column rows, red-white central runway, lamp spacing, and
+desktop props. The Swift factory renders the dark exhibit-like office: black
+floor and walls, repeated desks on both sides of the runway, cool under-desk
+glow, metal desk lamps, typewriter and paper props, low-detail seated operator
+placeholders, and side coat racks.
+
 The water lounge now uses a reference-driven scene spec for the room scale,
 water surface, central square platform, separated bridge slabs, furniture, and
 caustic density. The Swift factory owns only the native rendering projection:
 stone wall panels, black-gold water, leather sofas, concrete tea table, warm
 ceiling light wells, and animated water-caustic projection strips.
 
-The dynamic projection pass is driven from `ImmersiveEnvironmentView` through
-`TimelineView(.animation)`. It animates only entities named with the lounge
-water/caustic prefixes, so the Gateway-backed workspace panel and remote web
-window controls remain outside the scene animation logic.
+The dynamic pass is driven from `ImmersiveEnvironmentView` through
+`TimelineView(.animation)`. It animates only entities named with the office
+light/runway prefixes or lounge water/caustic prefixes, so the Gateway-backed
+workspace panel and remote web window controls remain outside the scene
+animation logic.
 
 ## Asset pipeline
 
@@ -119,6 +129,10 @@ Device test:
 - Only one immersive space is active at a time.
 - The office environment shows a complete room, desk grid, columns, lamps,
   dark materials, and central runway line.
+- The office environment keeps the central red-white runway open, places
+  repeated desks on both sides, and includes concrete column rows, cool
+  under-desk light pools, metal desk lamps, typewriter/paper props, seated
+  operator placeholders, and side coat racks matching the reference structure.
 - The water lounge environment shows surrounding water, central platform,
   sofas/table, warm stone room shell, ceiling light wells, and water caustic
   reflection layers.

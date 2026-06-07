@@ -1,0 +1,46 @@
+{
+  "room": {
+    "width": 12.8,
+    "depth": 10.6,
+    "height": 4.7
+  },
+  "deskGrid": {
+    "xPositions": [-3.85, -1.72, 1.72, 3.85],
+    "zPositions": [-3.45, -1.65, 0.15, 1.95]
+  },
+  "desk": {
+    "width": 1.58,
+    "depth": 0.9,
+    "topThickness": 0.08,
+    "topHeight": 0.72,
+    "baseWidth": 1.18,
+    "baseDepth": 0.66,
+    "baseHeight": 0.62
+  },
+  "column": {
+    "xPositions": [-4.75, 4.75],
+    "zPositions": [-2.65, 1.35],
+    "width": 0.72,
+    "depth": 0.72
+  },
+  "runway": {
+    "redWidth": 0.18,
+    "whiteWidth": 0.055,
+    "whiteOffset": 0.17,
+    "length": 9.6
+  },
+  "lighting": {
+    "lampHeight": 1.08,
+    "shadeWidth": 0.48,
+    "shadeDepth": 0.48,
+    "underDeskGlowWidth": 1.46,
+    "underDeskGlowDepth": 0.92,
+    "columnGlowWidth": 0.78
+  },
+  "props": {
+    "includeOperators": true,
+    "includeCoatRacks": true,
+    "typewriterWidth": 0.42,
+    "paperWidth": 0.34
+  }
+}
