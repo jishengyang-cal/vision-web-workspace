@@ -1,0 +1,48 @@
+{
+  "room": {
+    "width": 13.6,
+    "depth": 11.4,
+    "height": 4.8
+  },
+  "water": {
+    "height": 0.04,
+    "surfaceY": 0.08
+  },
+  "platform": {
+    "width": 6.4,
+    "depth": 6.4,
+    "height": 0.16,
+    "centerZ": -1.05
+  },
+  "bridge": {
+    "count": 11,
+    "slabWidth": 1.35,
+    "slabDepth": 0.28,
+    "slabHeight": 0.08,
+    "gap": 0.18,
+    "startZ": 4.55
+  },
+  "lighting": {
+    "ceilingHeight": 4.74,
+    "sideLightWidth": 4.2,
+    "sideLightDepth": 0.55,
+    "backWallLightWidth": 5.0,
+    "backWallLightHeight": 0.48
+  },
+  "furniture": {
+    "sofaWidth": 1.12,
+    "sofaDepth": 0.82,
+    "sofaHeight": 0.62,
+    "tableWidth": 1.95,
+    "tableDepth": 0.72,
+    "tableHeight": 0.42
+  },
+  "caustics": {
+    "wallRows": 5,
+    "wallColumns": 12,
+    "sideRows": 5,
+    "sideColumns": 8,
+    "platformCount": 34,
+    "bridgeIntensity": 0.7
+  }
+}

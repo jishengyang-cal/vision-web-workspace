@@ -45,12 +45,25 @@ The first implementation is procedural RealityKit source:
 
 ```text
 native/visionos/VisionWebWorkspace/Models/ImmersiveEnvironmentSceneFactory.swift
+native/visionos/VisionWebWorkspace/Models/WaterLoungeSceneSpec.swift
+native/visionos/VisionWebWorkspace/WaterLoungeSceneSpec.json
 native/visionos/VisionWebWorkspace/Views/ImmersiveEnvironmentView.swift
 ```
 
 This gives the Mac Builder a native source target without requiring binary
 assets in the repository. It also creates a clear asset replacement path:
 procedural room blockout first, USDZ/Reality Composer Pro scene second.
+
+The water lounge now uses a reference-driven scene spec for the room scale,
+water surface, central square platform, separated bridge slabs, furniture, and
+caustic density. The Swift factory owns only the native rendering projection:
+stone wall panels, black-gold water, leather sofas, concrete tea table, warm
+ceiling light wells, and animated water-caustic projection strips.
+
+The dynamic projection pass is driven from `ImmersiveEnvironmentView` through
+`TimelineView(.animation)`. It animates only entities named with the lounge
+water/caustic prefixes, so the Gateway-backed workspace panel and remote web
+window controls remain outside the scene animation logic.
 
 ## Asset pipeline
 
@@ -109,6 +122,11 @@ Device test:
 - The water lounge environment shows surrounding water, central platform,
   sofas/table, warm stone room shell, ceiling light wells, and water caustic
   reflection layers.
+- The water lounge central area is a square platform over water, reached by
+  separated rectangular concrete slabs with visible water gaps.
+- The lounge caustic layers move subtly across walls, platform, bridge slabs,
+  sofa surfaces, and the concrete tea table without moving the web workspace
+  attachment.
 - The Gateway-backed web workspace panel remains usable in both environments.
 - No Apple credentials, signing assets, or proprietary 3D asset licenses enter
   the Vision Pro client or repository.

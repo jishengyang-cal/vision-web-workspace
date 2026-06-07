@@ -169,6 +169,8 @@ const requiredFiles = [
   "native/visionos/VisionWebWorkspace/VisionWebWorkspaceApp.swift",
   "native/visionos/VisionWebWorkspace/Models/WorkspacePanelState.swift",
   "native/visionos/VisionWebWorkspace/Models/ImmersiveEnvironmentSceneFactory.swift",
+  "native/visionos/VisionWebWorkspace/Models/WaterLoungeSceneSpec.swift",
+  "native/visionos/VisionWebWorkspace/WaterLoungeSceneSpec.json",
   "native/visionos/VisionWebWorkspace/Models/GatewayModels.swift",
   "native/visionos/VisionWebWorkspace/Models/GatewayClient.swift",
   "native/visionos/VisionWebWorkspace/Views/LauncherView.swift",
@@ -433,10 +435,37 @@ if (!immersiveEnvironmentFactory.includes("buildOffice") || !immersiveEnvironmen
 if (!immersiveEnvironmentFactory.includes("water-pool") || !immersiveEnvironmentFactory.includes("caustic")) {
   violations.push("water lounge scene must include water pool and caustic reflection layers");
 }
+if (
+  !immersiveEnvironmentFactory.includes("WaterLoungeSceneSpec.load") ||
+  !immersiveEnvironmentFactory.includes("lounge-separated-bridge-slab") ||
+  !immersiveEnvironmentFactory.includes("lounge-square-meeting-platform")
+) {
+  violations.push("water lounge scene must be driven by the reference rebuild spec with platform and separated bridge slabs");
+}
+if (
+  !immersiveEnvironmentFactory.includes("lounge-caustic-animated-") ||
+  !immersiveEnvironmentFactory.includes("animateLoungeEntities") ||
+  !immersiveEnvironmentFactory.includes("lounge-water-animated-")
+) {
+  violations.push("water lounge scene must include animated water and caustic projection entities");
+}
+
+const waterLoungeSceneSpec = JSON.parse(readFileSync("native/visionos/VisionWebWorkspace/WaterLoungeSceneSpec.json", "utf8"));
+if (
+  waterLoungeSceneSpec.bridge?.count < 10 ||
+  waterLoungeSceneSpec.platform?.width < 6 ||
+  waterLoungeSceneSpec.caustics?.wallRows < 4 ||
+  waterLoungeSceneSpec.caustics?.platformCount < 30
+) {
+  violations.push("water lounge reference spec must preserve the bridge, square platform, and dense caustic projection layout");
+}
 
 const immersiveEnvironmentView = readFileSync("native/visionos/VisionWebWorkspace/Views/ImmersiveEnvironmentView.swift", "utf8");
 if (!immersiveEnvironmentView.includes("WorkspacePanelView") || !immersiveEnvironmentView.includes("ImmersiveEnvironmentSceneFactory")) {
   violations.push("full immersive environments must host the Gateway-backed workspace panel");
+}
+if (!immersiveEnvironmentView.includes("TimelineView(.animation)") || !immersiveEnvironmentView.includes("ImmersiveEnvironmentSceneFactory.update")) {
+  violations.push("full immersive environments must drive scene animation through the RealityView update loop");
 }
 
 const gatewayClient = readFileSync("native/visionos/VisionWebWorkspace/Models/GatewayClient.swift", "utf8");

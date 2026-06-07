@@ -2,6 +2,9 @@ import RealityKit
 import UIKit
 
 enum ImmersiveEnvironmentSceneFactory {
+    private static let animatedCausticPrefix = "lounge-caustic-animated-"
+    private static let animatedWaterPrefix = "lounge-water-animated-"
+
     static func make(kind: ImmersiveEnvironmentKind) -> Entity {
         let root = Entity()
         root.name = "ImmersiveEnvironmentRoot-\(kind.rawValue)"
@@ -14,6 +17,10 @@ enum ImmersiveEnvironmentSceneFactory {
         }
 
         return root
+    }
+
+    static func update(_ root: Entity, time: Float, baselines: inout [String: SIMD3<Float>]) {
+        animateLoungeEntities(root, time: time, baselines: &baselines)
     }
 
     private static func buildOffice(in root: Entity) {
@@ -34,21 +41,16 @@ enum ImmersiveEnvironmentSceneFactory {
     }
 
     private static func buildLounge(in root: Entity) {
-        addRoomShell(
-            to: root,
-            width: 11.5,
-            depth: 8.5,
-            height: 4.6,
-            floorMaterial: warmStone(),
-            wallMaterial: goldStone(),
-            ceilingMaterial: bronzeCeiling()
-        )
+        let spec = WaterLoungeSceneSpec.load()
+        root.name = "ImmersiveEnvironmentRoot-lounge-reference-rebuild"
 
-        addWaterPool(to: root)
-        addMeetingPlatform(to: root)
-        addLoungeFurniture(to: root)
-        addWaterCaustics(to: root)
-        addCeilingLightWells(to: root)
+        addWaterLoungeShell(to: root, spec: spec)
+        addWaterLoungePool(to: root, spec: spec)
+        addWaterLoungePlatform(to: root, spec: spec)
+        addWaterLoungeBridge(to: root, spec: spec)
+        addWaterLoungeFurniture(to: root, spec: spec)
+        addWaterLoungeLighting(to: root, spec: spec)
+        addWaterLoungeCaustics(to: root, spec: spec)
     }
 
     private static func addRoomShell(
@@ -105,6 +107,415 @@ enum ImmersiveEnvironmentSceneFactory {
     private static func addWorkspaceAnchorDesk(to root: Entity, position: SIMD3<Float>) {
         addBox(to: root, name: "workspace-anchor-table", size: [2.2, 0.1, 0.7], position: position, material: blackGloss())
         addBox(to: root, name: "workspace-anchor-base", size: [0.72, 0.75, 0.52], position: [position.x, 0.1, position.z], material: blackDeskBase())
+    }
+
+    private static func addWaterLoungeShell(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let room = spec.room
+        let floorY = spec.water.surfaceY - 0.09
+        addBox(to: root, name: "lounge-water-basin-floor", size: [room.width, 0.08, room.depth], position: [0, floorY, 0], material: blackWaterBasin())
+        addWallPanelGrid(to: root, name: "lounge-back-wall", wall: .back, room: room)
+        addWallPanelGrid(to: root, name: "lounge-left-wall", wall: .left, room: room)
+        addWallPanelGrid(to: root, name: "lounge-right-wall", wall: .right, room: room)
+
+        addBox(
+            to: root,
+            name: "lounge-ceiling-soffit-dark-center",
+            size: [room.width * 0.52, 0.08, room.depth],
+            position: [0, room.height, 0],
+            material: bronzeCeiling()
+        )
+        addBox(
+            to: root,
+            name: "lounge-ceiling-left-stone-return",
+            size: [room.width * 0.24, 0.08, room.depth],
+            position: [-room.width * 0.38, room.height, 0],
+            material: amberStone()
+        )
+        addBox(
+            to: root,
+            name: "lounge-ceiling-right-stone-return",
+            size: [room.width * 0.24, 0.08, room.depth],
+            position: [room.width * 0.38, room.height, 0],
+            material: amberStone()
+        )
+    }
+
+    private static func addWaterLoungePool(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let room = spec.room
+        let water = spec.water
+        addBox(
+            to: root,
+            name: "\(animatedWaterPrefix)main-pool",
+            size: [room.width - 0.18, water.height, room.depth - 0.18],
+            position: [0, water.surfaceY, 0],
+            material: blackGoldWater()
+        )
+
+        for index in 0..<18 {
+            let x = Float(index % 6) * 1.92 - 4.8
+            let z = Float(index / 6) * 1.55 + 1.65
+            addBox(
+                to: root,
+                name: "\(animatedWaterPrefix)gold-ripple-\(index)",
+                size: [0.95 + Float(index % 3) * 0.24, 0.01, 0.035],
+                position: [x, water.surfaceY + 0.035, z],
+                material: waterHighlight()
+            )
+        }
+    }
+
+    private static func addWaterLoungePlatform(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let platform = spec.platform
+        addBox(
+            to: root,
+            name: "lounge-square-meeting-platform",
+            size: [platform.width, platform.height, platform.depth],
+            position: [0, spec.water.surfaceY + platform.height / 2, platform.centerZ],
+            material: platformStone()
+        )
+        addBox(
+            to: root,
+            name: "lounge-platform-front-shadow-lip",
+            size: [platform.width, 0.035, 0.08],
+            position: [0, spec.water.surfaceY + 0.02, platform.centerZ + platform.depth / 2 + 0.02],
+            material: blackWaterBasin()
+        )
+        addPlatformPanelSeams(to: root, spec: spec)
+    }
+
+    private static func addWaterLoungeBridge(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let bridge = spec.bridge
+        let y = spec.water.surfaceY + bridge.slabHeight / 2 + 0.03
+        for index in 0..<bridge.count {
+            let z = bridge.startZ - Float(index) * (bridge.slabDepth + bridge.gap)
+            addBox(
+                to: root,
+                name: "lounge-separated-bridge-slab-\(index + 1)",
+                size: [bridge.slabWidth, bridge.slabHeight, bridge.slabDepth],
+                position: [0, y, z],
+                material: bridgeStone()
+            )
+            addBox(
+                to: root,
+                name: "\(animatedCausticPrefix)bridge-\(index)",
+                size: [bridge.slabWidth * 0.72, 0.012, 0.018],
+                position: [0.08 * sin(Float(index)), y + bridge.slabHeight / 2 + 0.01, z],
+                material: caustic(alpha: 0.18 * spec.caustics.bridgeIntensity)
+            )
+        }
+    }
+
+    private static func addWaterLoungeFurniture(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let furniture = spec.furniture
+        let platformY = spec.water.surfaceY + spec.platform.height
+        addReferenceSofa(
+            to: root,
+            name: "lounge-left-leather-sofa",
+            position: [-1.55, platformY + 0.26, spec.platform.centerZ - 0.35],
+            width: furniture.sofaWidth,
+            depth: furniture.sofaDepth,
+            height: furniture.sofaHeight,
+            facing: .right
+        )
+        addReferenceSofa(
+            to: root,
+            name: "lounge-right-leather-sofa",
+            position: [1.55, platformY + 0.26, spec.platform.centerZ - 0.35],
+            width: furniture.sofaWidth,
+            depth: furniture.sofaDepth,
+            height: furniture.sofaHeight,
+            facing: .left
+        )
+        addReferenceSofa(
+            to: root,
+            name: "lounge-back-leather-sofa",
+            position: [0, platformY + 0.26, spec.platform.centerZ - 1.95],
+            width: furniture.sofaWidth * 1.55,
+            depth: furniture.sofaDepth,
+            height: furniture.sofaHeight,
+            facing: .front
+        )
+        addConcreteTeaTable(to: root, spec: spec)
+    }
+
+    private static func addWaterLoungeLighting(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let room = spec.room
+        let lighting = spec.lighting
+        addBox(
+            to: root,
+            name: "lounge-ceiling-left-gold-light-well",
+            size: [lighting.sideLightWidth, 0.035, lighting.sideLightDepth],
+            position: [-room.width * 0.28, lighting.ceilingHeight + 0.035, -room.depth * 0.36],
+            material: warmLight()
+        )
+        addBox(
+            to: root,
+            name: "lounge-ceiling-right-gold-light-well",
+            size: [lighting.sideLightWidth, 0.035, lighting.sideLightDepth],
+            position: [room.width * 0.28, lighting.ceilingHeight + 0.035, -room.depth * 0.36],
+            material: warmLight()
+        )
+        addBox(
+            to: root,
+            name: "lounge-back-wall-upper-glow-slot",
+            size: [lighting.backWallLightWidth, lighting.backWallLightHeight, 0.02],
+            position: [0, room.height - 0.82, -room.depth / 2 + 0.04],
+            material: warmLight()
+        )
+        addBox(
+            to: root,
+            name: "lounge-waterline-gold-glow",
+            size: [room.width - 1.1, 0.035, 0.018],
+            position: [0, spec.water.surfaceY + 0.12, -room.depth / 2 + 0.05],
+            material: waterHighlight()
+        )
+    }
+
+    private static func addWaterLoungeCaustics(to root: Entity, spec: WaterLoungeSceneSpec) {
+        addBackWallCaustics(to: root, spec: spec)
+        addSideWallCaustics(to: root, spec: spec)
+        addPlatformCaustics(to: root, spec: spec)
+        addFurnitureCaustics(to: root, spec: spec)
+    }
+
+    private enum WallOrientation {
+        case back
+        case left
+        case right
+    }
+
+    private enum SofaFacing {
+        case left
+        case right
+        case front
+    }
+
+    private static func addWallPanelGrid(to root: Entity, name: String, wall: WallOrientation, room: WaterLoungeSceneSpec.Room) {
+        switch wall {
+        case .back:
+            addBox(to: root, name: name, size: [room.width, room.height, 0.05], position: [0, room.height / 2, -room.depth / 2], material: amberStone())
+            for column in 1..<6 {
+                let x = -room.width / 2 + Float(column) * room.width / 6
+                addBox(to: root, name: "\(name)-vertical-seam-\(column)", size: [0.015, room.height, 0.018], position: [x, room.height / 2, -room.depth / 2 + 0.031], material: panelSeam())
+            }
+            for row in 1..<5 {
+                let y = Float(row) * room.height / 5
+                addBox(to: root, name: "\(name)-horizontal-seam-\(row)", size: [room.width, 0.012, 0.018], position: [0, y, -room.depth / 2 + 0.032], material: panelSeam())
+            }
+        case .left:
+            addBox(to: root, name: name, size: [0.05, room.height, room.depth], position: [-room.width / 2, room.height / 2, 0], material: amberStone())
+            for column in 1..<5 {
+                let z = -room.depth / 2 + Float(column) * room.depth / 5
+                addBox(to: root, name: "\(name)-vertical-seam-\(column)", size: [0.018, room.height, 0.015], position: [-room.width / 2 + 0.032, room.height / 2, z], material: panelSeam())
+            }
+            for row in 1..<5 {
+                let y = Float(row) * room.height / 5
+                addBox(to: root, name: "\(name)-horizontal-seam-\(row)", size: [0.018, 0.012, room.depth], position: [-room.width / 2 + 0.033, y, 0], material: panelSeam())
+            }
+        case .right:
+            addBox(to: root, name: name, size: [0.05, room.height, room.depth], position: [room.width / 2, room.height / 2, 0], material: amberStone())
+            for column in 1..<5 {
+                let z = -room.depth / 2 + Float(column) * room.depth / 5
+                addBox(to: root, name: "\(name)-vertical-seam-\(column)", size: [0.018, room.height, 0.015], position: [room.width / 2 - 0.032, room.height / 2, z], material: panelSeam())
+            }
+            for row in 1..<5 {
+                let y = Float(row) * room.height / 5
+                addBox(to: root, name: "\(name)-horizontal-seam-\(row)", size: [0.018, 0.012, room.depth], position: [room.width / 2 - 0.033, y, 0], material: panelSeam())
+            }
+        }
+    }
+
+    private static func addPlatformPanelSeams(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let platform = spec.platform
+        let topY = spec.water.surfaceY + platform.height + 0.012
+        for index in 1..<4 {
+            let x = -platform.width / 2 + Float(index) * platform.width / 4
+            addBox(to: root, name: "lounge-platform-x-seam-\(index)", size: [0.018, 0.012, platform.depth], position: [x, topY, platform.centerZ], material: platformSeam())
+        }
+        for index in 1..<4 {
+            let z = platform.centerZ - platform.depth / 2 + Float(index) * platform.depth / 4
+            addBox(to: root, name: "lounge-platform-z-seam-\(index)", size: [platform.width, 0.012, 0.018], position: [0, topY, z], material: platformSeam())
+        }
+    }
+
+    private static func addReferenceSofa(
+        to root: Entity,
+        name: String,
+        position: SIMD3<Float>,
+        width: Float,
+        depth: Float,
+        height: Float,
+        facing: SofaFacing
+    ) {
+        let seat = addBox(to: root, name: "\(name)-seat", size: [width, 0.22, depth], position: position, material: darkLeather())
+        let backOffset: SIMD3<Float>
+        let leftArmPosition: SIMD3<Float>
+        let rightArmPosition: SIMD3<Float>
+        let backSize: SIMD3<Float>
+        let armSize: SIMD3<Float>
+
+        switch facing {
+        case .left:
+            backOffset = [width / 2 - 0.08, 0.22, 0]
+            backSize = [0.16, height, depth]
+            armSize = [width, 0.36, 0.15]
+            leftArmPosition = [0, 0.08, -depth / 2 + 0.07]
+            rightArmPosition = [0, 0.08, depth / 2 - 0.07]
+        case .right:
+            backOffset = [-width / 2 + 0.08, 0.22, 0]
+            backSize = [0.16, height, depth]
+            armSize = [width, 0.36, 0.15]
+            leftArmPosition = [0, 0.08, -depth / 2 + 0.07]
+            rightArmPosition = [0, 0.08, depth / 2 - 0.07]
+        case .front:
+            backOffset = [0, 0.22, -depth / 2 + 0.08]
+            backSize = [width, height, 0.16]
+            armSize = [0.15, 0.36, depth]
+            leftArmPosition = [-width / 2 + 0.07, 0.08, 0]
+            rightArmPosition = [width / 2 - 0.07, 0.08, 0]
+        }
+
+        _ = seat
+        addBox(to: root, name: "\(name)-back", size: backSize, position: position + backOffset, material: darkLeather())
+        addBox(to: root, name: "\(name)-left-arm", size: armSize, position: position + leftArmPosition, material: darkLeather())
+        addBox(to: root, name: "\(name)-right-arm", size: armSize, position: position + rightArmPosition, material: darkLeather())
+        addBox(to: root, name: "\(name)-front-leg-left", size: [0.045, 0.22, 0.045], position: [position.x - width * 0.32, position.y - 0.22, position.z + depth * 0.32], material: chrome())
+        addBox(to: root, name: "\(name)-front-leg-right", size: [0.045, 0.22, 0.045], position: [position.x + width * 0.32, position.y - 0.22, position.z + depth * 0.32], material: chrome())
+        addBox(to: root, name: "\(animatedCausticPrefix)\(name)-seat-glint", size: [width * 0.55, 0.015, 0.024], position: [position.x, position.y + 0.125, position.z + depth * 0.08], material: caustic(alpha: 0.2))
+    }
+
+    private static func addConcreteTeaTable(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let platformY = spec.water.surfaceY + spec.platform.height
+        let furniture = spec.furniture
+        let center: SIMD3<Float> = [0, platformY + furniture.tableHeight / 2, spec.platform.centerZ - 0.32]
+        addBox(to: root, name: "lounge-cement-tea-table-top", size: [furniture.tableWidth, 0.13, furniture.tableDepth], position: [center.x, center.y + 0.18, center.z], material: polishedConcrete())
+        addBox(to: root, name: "lounge-cement-tea-table-base", size: [0.62, furniture.tableHeight, furniture.tableDepth * 0.55], position: center, material: polishedConcrete())
+        addBox(to: root, name: "\(animatedCausticPrefix)table-top-glow", size: [furniture.tableWidth * 0.78, 0.014, 0.022], position: [center.x, center.y + 0.255, center.z - 0.06], material: caustic(alpha: 0.24))
+        addBox(to: root, name: "lounge-table-object-tray", size: [0.42, 0.035, 0.22], position: [center.x - 0.42, center.y + 0.34, center.z], material: blackGloss())
+        addBox(to: root, name: "lounge-table-object-box", size: [0.22, 0.14, 0.22], position: [center.x + 0.42, center.y + 0.39, center.z - 0.04], material: blackDeskBase())
+    }
+
+    private static func addBackWallCaustics(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let room = spec.room
+        for row in 0..<spec.caustics.wallRows {
+            for column in 0..<spec.caustics.wallColumns {
+                let index = row * spec.caustics.wallColumns + column
+                let x = -room.width * 0.42 + Float(column) * room.width * 0.84 / Float(max(1, spec.caustics.wallColumns - 1))
+                let y = 1.05 + Float(row) * 0.58
+                let width = 0.48 + Float((index * 7) % 5) * 0.11
+                addBox(
+                    to: root,
+                    name: "\(animatedCausticPrefix)back-wall-\(index)",
+                    size: [width, 0.018, 0.012],
+                    position: [x, y, -room.depth / 2 + 0.058],
+                    material: caustic(alpha: 0.26)
+                )
+            }
+        }
+    }
+
+    private static func addSideWallCaustics(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let room = spec.room
+        for side in 0..<2 {
+            let x = side == 0 ? -room.width / 2 + 0.058 : room.width / 2 - 0.058
+            let sideName = side == 0 ? "left" : "right"
+            for row in 0..<spec.caustics.sideRows {
+                for column in 0..<spec.caustics.sideColumns {
+                    let index = row * spec.caustics.sideColumns + column
+                    let z = -room.depth * 0.36 + Float(column) * room.depth * 0.72 / Float(max(1, spec.caustics.sideColumns - 1))
+                    let y = 1.15 + Float(row) * 0.56
+                    addBox(
+                        to: root,
+                        name: "\(animatedCausticPrefix)\(sideName)-wall-\(index)",
+                        size: [0.012, 0.018, 0.52 + Float(index % 3) * 0.16],
+                        position: [x, y, z],
+                        material: caustic(alpha: 0.22)
+                    )
+                }
+            }
+        }
+    }
+
+    private static func addPlatformCaustics(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let platform = spec.platform
+        let topY = spec.water.surfaceY + platform.height + 0.026
+        for index in 0..<spec.caustics.platformCount {
+            let x = -platform.width * 0.42 + Float(index % 7) * platform.width * 0.84 / 6
+            let z = platform.centerZ - platform.depth * 0.38 + Float(index / 7) * 0.82
+            addBox(
+                to: root,
+                name: "\(animatedCausticPrefix)platform-\(index)",
+                size: [0.5 + Float(index % 4) * 0.12, 0.012, 0.018],
+                position: [x, topY, z],
+                material: caustic(alpha: 0.16)
+            )
+        }
+    }
+
+    private static func addFurnitureCaustics(to root: Entity, spec: WaterLoungeSceneSpec) {
+        let y = spec.water.surfaceY + spec.platform.height + 0.55
+        for index in 0..<10 {
+            let x = Float(index % 5) * 0.55 - 1.1
+            let z = spec.platform.centerZ - 2.35 + Float(index / 5) * 0.38
+            addBox(
+                to: root,
+                name: "\(animatedCausticPrefix)back-sofa-\(index)",
+                size: [0.34 + Float(index % 2) * 0.16, 0.014, 0.018],
+                position: [x, y, z],
+                material: caustic(alpha: 0.18)
+            )
+        }
+    }
+
+    private static func animateLoungeEntities(_ entity: Entity, time: Float, baselines: inout [String: SIMD3<Float>]) {
+        if entity.name.hasPrefix(animatedCausticPrefix) {
+            let baseline = baselinePosition(for: entity, in: &baselines)
+            let phase = animationPhase(for: entity.name)
+            let drift: SIMD3<Float> = [
+                sin(time * 0.72 + phase) * 0.035,
+                cos(time * 0.57 + phase * 0.7) * 0.012,
+                sin(time * 0.49 + phase * 1.3) * 0.028
+            ]
+            entity.position = baseline + drift
+            entity.scale = [
+                1.0 + sin(time * 0.86 + phase) * 0.16,
+                1.0 + cos(time * 1.08 + phase) * 0.06,
+                1.0 + sin(time * 0.63 + phase * 0.4) * 0.12
+            ]
+        } else if entity.name.hasPrefix(animatedWaterPrefix) {
+            let baseline = baselinePosition(for: entity, in: &baselines)
+            let phase = animationPhase(for: entity.name)
+            entity.position = baseline + [
+                0,
+                sin(time * 0.52 + phase) * 0.006,
+                0
+            ]
+            entity.scale = [
+                1.0 + sin(time * 0.34 + phase) * 0.012,
+                1.0,
+                1.0 + cos(time * 0.39 + phase) * 0.018
+            ]
+        }
+
+        for child in entity.children {
+            animateLoungeEntities(child, time: time, baselines: &baselines)
+        }
+    }
+
+    private static func baselinePosition(for entity: Entity, in baselines: inout [String: SIMD3<Float>]) -> SIMD3<Float> {
+        if let baseline = baselines[entity.name] {
+            return baseline
+        }
+
+        baselines[entity.name] = entity.position
+        return entity.position
+    }
+
+    private static func animationPhase(for name: String) -> Float {
+        let hash = name.utf8.reduce(UInt32(2_166_136_261)) { partial, byte in
+            (partial ^ UInt32(byte)) &* 16_777_619
+        }
+        return Float(hash % 6_283) / 1_000.0
     }
 
     private static func addWaterPool(to root: Entity) {
@@ -212,4 +623,14 @@ enum ImmersiveEnvironmentSceneFactory {
     private static func darkLeather() -> SimpleMaterial { simple(0.055, 0.043, 0.035, roughness: 0.36) }
     private static func warmLight() -> UnlitMaterial { unlit(1.0, 0.72, 0.24, 0.88) }
     private static func caustic() -> UnlitMaterial { unlit(1.0, 0.76, 0.24, 0.34) }
+    private static func blackWaterBasin() -> SimpleMaterial { simple(0.008, 0.006, 0.004, roughness: 0.28) }
+    private static func amberStone() -> SimpleMaterial { simple(0.72, 0.45, 0.16, roughness: 0.5) }
+    private static func blackGoldWater() -> SimpleMaterial { simple(0.025, 0.015, 0.006, 0.78, roughness: 0.03) }
+    private static func waterHighlight() -> UnlitMaterial { unlit(1.0, 0.68, 0.16, 0.45) }
+    private static func platformStone() -> SimpleMaterial { simple(0.78, 0.56, 0.22, roughness: 0.36) }
+    private static func bridgeStone() -> SimpleMaterial { simple(0.64, 0.45, 0.19, roughness: 0.5) }
+    private static func panelSeam() -> SimpleMaterial { simple(0.18, 0.12, 0.07, roughness: 0.7) }
+    private static func platformSeam() -> SimpleMaterial { simple(0.34, 0.23, 0.11, roughness: 0.65) }
+    private static func polishedConcrete() -> SimpleMaterial { simple(0.46, 0.38, 0.27, roughness: 0.42) }
+    private static func caustic(alpha: Float) -> UnlitMaterial { unlit(1.0, 0.72, 0.18, CGFloat(alpha)) }
 }
