@@ -57,6 +57,8 @@ const requiredScripts = [
   "visionos:testflight:archive",
   "dev:mac-builder:agent",
   "serve:mac-builder:agent",
+  "assets:app-icon:generate",
+  "assets:app-icon:check",
   "aws:mac:plan",
   "aws:mac:doctor",
   "aws:mac:cost-check",
@@ -129,7 +131,12 @@ const requiredFiles = [
   "docs/workflows/immersive-environments.md",
   "docs/workflows/remote-web-window-workspace.md",
   "docs/workflows/app-store-release.md",
+  "docs/workflows/app-icon-design.md",
   "docs/workflows/mcp-and-hooks.md",
+  "assets/app-icon/source/icon-brief.md",
+  "assets/app-icon/source/background.svg",
+  "assets/app-icon/source/middle.svg",
+  "assets/app-icon/source/foreground.svg",
   "infra/aws-mac-builder/config.example.json",
   "infra/aws-mac-builder/baseline.cfn.yaml",
   "workflows/visionos-development.json",
@@ -149,9 +156,12 @@ const requiredFiles = [
   "scripts/aws-mac-builder.mjs",
   "scripts/aws-mac-worker.mjs",
   "scripts/aws-mac-xcode.mjs",
+  "scripts/generate-app-icon.mjs",
   "tests/mac-builder.e2e.mjs",
   "native/visionos/README.md",
   "native/visionos/project.yml",
+  "native/visionos/VisionWebWorkspace/Assets.xcassets/Contents.json",
+  "native/visionos/VisionWebWorkspace/Assets.xcassets/AppIcon.solidimagestack/Contents.json",
   "native/visionos/VisionWebWorkspace/Info.plist",
   "native/visionos/VisionWebWorkspace/VisionWebWorkspaceApp.swift",
   "native/visionos/VisionWebWorkspace/Models/WorkspacePanelState.swift",
@@ -336,8 +346,33 @@ if (!nativeProjectSpec.includes("platform: visionOS")) {
 if (!nativeProjectSpec.includes("PRODUCT_BUNDLE_IDENTIFIER: com.jishengyang.visionwebworkspace")) {
   violations.push("native project must declare the product bundle identifier");
 }
+if (!nativeProjectSpec.includes("ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon")) {
+  violations.push("native project must compile the committed AppIcon asset catalog");
+}
 if (!nativeProjectSpec.includes("VisionWebWorkspace")) {
   violations.push("native project must declare the VisionWebWorkspace target");
+}
+
+const appIconStackPath = "native/visionos/VisionWebWorkspace/Assets.xcassets/AppIcon.solidimagestack";
+const appIconStack = JSON.parse(readFileSync(`${appIconStackPath}/Contents.json`, "utf8"));
+const appIconLayers = appIconStack.layers?.map((layer) => layer.filename) ?? [];
+for (const layer of ["Front", "Middle", "Back"]) {
+  const layerFolder = `${layer}.solidimagestacklayer`;
+  const imageSetPath = `${appIconStackPath}/${layerFolder}/Content.imageset`;
+  if (!appIconLayers.includes(layerFolder)) {
+    violations.push(`visionOS AppIcon stack must declare ${layerFolder}`);
+    continue;
+  }
+  const imageSet = JSON.parse(readFileSync(`${imageSetPath}/Contents.json`, "utf8"));
+  const image = imageSet.images?.find((entry) => entry.idiom === "vision" && entry.scale === "2x");
+  if (!image?.filename) {
+    violations.push(`visionOS AppIcon ${layerFolder} must declare a 2x vision PNG`);
+    continue;
+  }
+  const header = readPngHeader(`${imageSetPath}/${image.filename}`);
+  if (header.width !== 1024 || header.height !== 1024 || header.bitDepth !== 8 || header.colorType !== 6) {
+    violations.push(`visionOS AppIcon ${layerFolder} PNG must be 1024x1024 8-bit RGBA`);
+  }
 }
 
 const nativeApp = readFileSync("native/visionos/VisionWebWorkspace/VisionWebWorkspaceApp.swift", "utf8");
@@ -554,6 +589,35 @@ function run(command) {
     throw new Error(result.stderr || `Command failed: ${command}`);
   }
   return result.stdout.trim();
+}
+
+function readPngHeader(file) {
+  if (!existsSync(file)) {
+    violations.push(`missing PNG asset: ${file}`);
+    return {
+      width: 0,
+      height: 0,
+      bitDepth: 0,
+      colorType: 0
+    };
+  }
+  const data = readFileSync(file);
+  const signature = data.subarray(0, 8).toString("hex");
+  if (signature !== "89504e470d0a1a0a") {
+    violations.push(`asset is not a PNG: ${file}`);
+    return {
+      width: 0,
+      height: 0,
+      bitDepth: 0,
+      colorType: 0
+    };
+  }
+  return {
+    width: data.readUInt32BE(16),
+    height: data.readUInt32BE(20),
+    bitDepth: data[24],
+    colorType: data[25]
+  };
 }
 
 function isTextLike(file) {

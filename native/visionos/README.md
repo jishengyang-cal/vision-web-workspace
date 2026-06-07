@@ -71,3 +71,18 @@ scale, rotation, angle, opacity, and lock state.
 
 The detailed first-stage plan is
 `docs/workflows/remote-web-window-workspace.md`.
+
+## App icon assets
+
+The visionOS app icon is a committed layered image stack under
+`VisionWebWorkspace/Assets.xcassets/AppIcon.solidimagestack`. It is generated
+from the repository pipeline rather than by manually dragging files in Xcode:
+
+```bash
+pnpm assets:app-icon:generate
+pnpm assets:app-icon:check
+```
+
+Design notes and editable SVG references live in
+`assets/app-icon/source/`. The Mac Builder remains the authority for confirming
+that Xcode accepts the asset catalog during the native build.

@@ -23,5 +23,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.jishengyang.visionwebworkspace
         PRODUCT_NAME: VisionWebWorkspace
         INFOPLIST_FILE: VisionWebWorkspace/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "7"

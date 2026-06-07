@@ -145,6 +145,8 @@ Run after export and before upload:
   - privacy usage descriptions
 - Build number is greater than the previous uploaded build for that version.
 - Required icons and marketing icon are present.
+- The visionOS `AppIcon.solidimagestack` is generated and checked with
+  `pnpm assets:app-icon:check`.
 - Entitlements do not include undeclared or unused capabilities.
 - App Store Connect app record exists for the Bundle ID.
 - Export method matches target:

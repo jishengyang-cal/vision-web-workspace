@@ -16,6 +16,8 @@
     "serve:gateway": "node services/gateway/dist/index.js",
     "serve:mac-builder:mock": "node services/mac-builder-mock/dist/index.js",
     "serve:mac-builder:agent": "node services/mac-builder-agent/dist/index.js",
+    "assets:app-icon:generate": "node scripts/generate-app-icon.mjs",
+    "assets:app-icon:check": "node scripts/generate-app-icon.mjs --check",
     "build": "pnpm build:packages && pnpm --filter @vision-web-workspace/gateway build && pnpm --filter @vision-web-workspace/mac-builder-mock build && pnpm --filter @vision-web-workspace/mac-builder-agent build && pnpm --filter @vision-web-workspace/web-simulator build",
     "build:packages": "pnpm --filter @vision-web-workspace/contracts build && pnpm --filter @vision-web-workspace/window-manager build",
     "typecheck": "pnpm build:packages && pnpm -r typecheck",
