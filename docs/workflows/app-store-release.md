@@ -180,14 +180,104 @@ The adapter response should include:
 
 ## TestFlight workflow
 
-1. Upload IPA.
-2. Poll build processing state.
-3. Attach build to internal TestFlight testers first.
-4. Install on Apple Vision Pro via TestFlight.
-5. Capture feedback, crashes, screenshots, and manual notes.
-6. Fix and upload next build.
-7. Promote to external testers only after internal smoke testing.
-8. Submit to review after privacy, screenshots, metadata, and entitlement checks.
+### Apple account review hold mode
+
+The current development plan assumes the Apple account path has an existing
+issue under review. While that review is pending, the project continues in
+implementation-first mode:
+
+- Product source, contracts, gateway behavior, native shell code, and simulator
+  behavior continue to be built to full scope.
+- Linux checks, browser e2e, mock Mac Builder e2e, and real Mac Builder build
+  checks remain the active verification gates.
+- TestFlight upload, tester assignment, and Vision Pro local acceptance remain
+  blocked until Apple account approval is available.
+- No Apple ID password, App Store Connect key, signing identity, provisioning
+  profile, or `.p12` material is added to the repository to work around the
+  approval delay.
+
+Each implemented feature should reach a `ready-for-TestFlight` state before the
+account issue is cleared. That state means source is complete, the control-plane
+tests pass, and the feature has a short local acceptance procedure that can be
+run on Vision Pro after upload.
+
+### Cloud Mac Builder path
+
+This is the supported path when the operator does not have a local Mac. The
+Linux workspace only submits a structured archive request. Xcode, signing,
+export, optional upload, and Apple credential access stay inside the remote Mac
+Builder.
+
+```bash
+pnpm visionos:testflight:plan
+
+VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3201 \
+APPLE_TEAM_ID=<team id> \
+pnpm visionos:testflight:preflight
+
+VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3201 \
+APPLE_TEAM_ID=<team id> \
+pnpm visionos:testflight:archive
+```
+
+Archive/export produces a signed archive, IPA, logs, and `.xcresult` artifacts
+through the Mac Builder job API. Upload is not enabled by default. To upload to
+App Store Connect for TestFlight processing, both sides must opt in:
+
+```bash
+# Linux/operator request side
+VISIONOS_TESTFLIGHT_UPLOAD=1 pnpm visionos:testflight:archive
+
+# Mac Builder environment side
+MAC_BUILDER_ENABLE_TESTFLIGHT_UPLOAD=1
+MAC_BUILDER_APP_STORE_CONNECT_API_KEY_ID=<key id>
+MAC_BUILDER_APP_STORE_CONNECT_API_ISSUER_ID=<issuer id>
+MAC_BUILDER_APP_STORE_CONNECT_API_PRIVATE_KEY_PATH=<path on Mac Builder>
+```
+
+The App Store Connect API key file must exist only on the Mac Builder. The CLI
+prints whether configuration is present, but it never prints key material.
+
+### Device installation and feedback loop
+
+1. Archive/export the IPA on the Mac Builder.
+2. Upload the IPA to App Store Connect only when the explicit upload gate is
+   enabled.
+3. Poll build processing state in App Store Connect or with a future release
+   adapter.
+4. Attach the processed build to internal TestFlight testers first.
+5. Install on Apple Vision Pro via TestFlight.
+6. Use the in-app diagnostics copy action to capture layout/window state when
+   Xcode console streaming is not available.
+7. Capture crashes, screenshots, and manual notes in the work item.
+8. Fix and upload the next build.
+9. Promote to external testers only after internal smoke testing.
+10. Submit to review after privacy, screenshots, metadata, and entitlement
+    checks.
+
+This workflow is not a replacement for live Xcode debugging. It is the
+no-local-Mac path for build, install, and feedback-driven testing on a real
+Apple Vision Pro.
+
+### Post-approval feature acceptance matrix
+
+After Apple approval, run the TestFlight loop feature by feature. Each item
+should be tested on the local Vision Pro device and recorded with diagnostics
+copied from the in-app menu when a failure occurs.
+
+| Feature area | Local Vision Pro acceptance |
+| --- | --- |
+| Mixed passthrough launch | App opens into the remote web workspace while the real surrounding environment remains visible. |
+| Screen-locked workspace | Window positions remain fixed relative to the wearer while the wearer moves. |
+| Window creation limit | Menu can open up to 10 remote web windows and blocks the eleventh without crashing. |
+| Remote URL rendering | Terminal, code, browser, docs, and logs windows display content owned by the remote server. |
+| Spatial manipulation | Windows can move, scale, rotate, change depth, and keep their adjusted pose. |
+| Opacity | Each window opacity can be changed without changing remote page behavior. |
+| Lock state | Locked windows resist accidental move/scale/rotate edits until unlocked. |
+| Keyboard and dictation | visionOS text input and dictation enter text into remote web fields where WebKit allows it. |
+| Clipboard | Copy/paste follows the configured platform clipboard policy. |
+| Layout persistence | Saved layout restores active window, z-order, pose, opacity, and lock state. |
+| Diagnostics | `Copy Diagnostics` copies app version, build number, layout, and window state as JSON. |
 
 ## Review readiness checklist
 

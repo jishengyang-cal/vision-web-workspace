@@ -35,6 +35,15 @@ struct FollowWorkspaceImmersiveView: View {
                         focus: {
                             store.focus(windowId: window.id)
                         },
+                        newWindow: {
+                            store.openSibling(of: window)
+                        },
+                        minimize: {
+                            store.minimize(windowId: window.id)
+                        },
+                        restore: {
+                            store.restore(windowId: window.id)
+                        },
                         close: {
                             store.close(windowId: window.id)
                         }
@@ -95,6 +104,9 @@ struct FollowWorkspaceImmersiveView: View {
 
     private func attachWindows(_ attachments: RealityViewAttachments) {
         let activeWindowIDs = Set(store.layout.windows.map(\.id))
+        let minimizedWindowIDs = store.layout.windows
+            .filter { $0.minimized == true }
+            .map(\.id)
         removeClosedWindowEntities(activeWindowIDs: activeWindowIDs)
 
         for window in store.layout.windows {
@@ -103,13 +115,25 @@ struct FollowWorkspaceImmersiveView: View {
             }
 
             entity.name = WorkspaceConstants.windowEntityName(window.id)
-            entity.position = [
-                Float(window.pose3D.x),
-                Float(window.pose3D.y),
-                Float(window.pose3D.z) - Float(window.zIndex) * 0.002
-            ]
-            entity.scale = SIMD3<Float>(repeating: Float(window.pose3D.scale))
-            entity.orientation = orientation(for: window.pose3D)
+            if window.minimized == true,
+               let bubbleIndex = minimizedWindowIDs.firstIndex(of: window.id) {
+                let bubblePose = minimizedBubblePose(index: bubbleIndex, count: minimizedWindowIDs.count)
+                entity.position = [
+                    Float(bubblePose.x),
+                    Float(bubblePose.y),
+                    Float(bubblePose.z) - Float(bubbleIndex) * 0.001
+                ]
+                entity.scale = SIMD3<Float>(repeating: Float(bubblePose.scale))
+                entity.orientation = orientation(for: bubblePose)
+            } else {
+                entity.position = [
+                    Float(window.pose3D.x),
+                    Float(window.pose3D.y),
+                    Float(window.pose3D.z) - Float(window.zIndex) * 0.002
+                ]
+                entity.scale = SIMD3<Float>(repeating: Float(window.pose3D.scale))
+                entity.orientation = orientation(for: window.pose3D)
+            }
 
             if entity.parent == nil {
                 rootEntity.addChild(entity)
@@ -140,5 +164,18 @@ struct FollowWorkspaceImmersiveView: View {
 
     private func degreesToRadians(_ degrees: Double) -> Float {
         Float(degrees * .pi / 180)
+    }
+
+    private func minimizedBubblePose(index: Int, count: Int) -> GatewayWindowPose3D {
+        let centeredIndex = Double(index) - Double(max(0, count - 1)) / 2.0
+        return GatewayWindowPose3D(
+            x: centeredIndex * 0.18,
+            y: 0.42,
+            z: -0.92,
+            yawDegrees: 0,
+            pitchDegrees: -2,
+            rollDegrees: 0,
+            scale: 1
+        )
     }
 }

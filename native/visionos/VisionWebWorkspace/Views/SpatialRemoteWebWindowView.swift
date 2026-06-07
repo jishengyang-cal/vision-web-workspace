@@ -7,12 +7,31 @@ import UIKit
 struct SpatialRemoteWebWindowView: View {
     @Binding var window: GatewayWindow
     let focus: () -> Void
+    let newWindow: () -> Void
+    let minimize: () -> Void
+    let restore: () -> Void
     let close: () -> Void
 
     @State private var address = ""
     @State private var dragStartPose: GatewayWindowPose3D?
 
     var body: some View {
+        Group {
+            if window.minimized == true {
+                minimizedBubble
+            } else {
+                fullWindow
+            }
+        }
+        .onAppear {
+            address = window.url
+        }
+        .onChange(of: window.url) { _, newValue in
+            address = newValue
+        }
+    }
+
+    private var fullWindow: some View {
         VStack(spacing: 0) {
             titlebar
 
@@ -44,12 +63,27 @@ struct SpatialRemoteWebWindowView: View {
         .onTapGesture {
             focus()
         }
-        .onAppear {
-            address = window.url
+    }
+
+    private var minimizedBubble: some View {
+        Button {
+            restore()
+        } label: {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(kindColor)
+                    .frame(width: 12, height: 12)
+
+                Text(window.title)
+                    .font(.caption)
+                    .lineLimit(1)
+            }
+            .frame(width: 112, height: 44)
+            .background(.regularMaterial)
+            .clipShape(Capsule())
+            .glassBackgroundEffect()
         }
-        .onChange(of: window.url) { _, newValue in
-            address = newValue
-        }
+        .buttonStyle(.plain)
     }
 
     private var titlebar: some View {
@@ -69,13 +103,18 @@ struct SpatialRemoteWebWindowView: View {
 
             Spacer()
 
-            Button(window.locked ? "Unlock" : "Lock") {
-                window.locked.toggle()
-                touchWindow()
-            }
+            HStack(spacing: 6) {
+                Button("+") {
+                    newWindow()
+                }
 
-            Button("Close") {
-                close()
+                Button("-") {
+                    minimize()
+                }
+
+                Button("x") {
+                    close()
+                }
             }
         }
         .padding(.horizontal, 12)
@@ -110,6 +149,10 @@ struct SpatialRemoteWebWindowView: View {
             }
 
             HStack(spacing: 8) {
+                Button(window.locked ? "Unlock" : "Lock") {
+                    window.locked.toggle()
+                    touchWindow()
+                }
                 Button("Scale -") {
                     adjustScale(-0.05)
                 }
@@ -247,6 +290,9 @@ struct SpatialRemoteWebWindowView: View {
     SpatialRemoteWebWindowView(
         window: .constant(GatewayLayout.default.windows[0]),
         focus: {},
+        newWindow: {},
+        minimize: {},
+        restore: {},
         close: {}
     )
 }

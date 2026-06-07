@@ -161,6 +161,37 @@ button:disabled {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.minimized-bubbles {
+  position: absolute;
+  z-index: 10001;
+  top: 54px;
+  left: 50%;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.minimized-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 156px;
+  min-width: 0;
+  height: 32px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(32, 40, 51, 0.9);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+}
+
+.minimized-bubble span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .spatial-window {
   position: absolute;
   display: grid;
@@ -193,6 +224,12 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .kind-dot {

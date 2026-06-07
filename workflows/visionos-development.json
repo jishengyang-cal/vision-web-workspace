@@ -2,6 +2,8 @@
   "version": 1,
   "name": "visionos-development",
   "hardBoundary": "Native visionOS build, signing, official simulator, device install, TestFlight, and App Store submission require macOS, Xcode, the visionOS SDK, and Apple-controlled credentials.",
+  "releaseMode": "implementation-first-account-review-hold",
+  "releaseModeReason": "Apple account access has an existing issue under review. Product implementation continues to full scope; TestFlight upload and local device acceptance resume after Apple approval.",
   "nativeProject": {
     "sourceRoot": "native/visionos",
     "generator": "xcodegen",
@@ -70,6 +72,13 @@
       "capabilities": ["linux-runnable", "mcp-candidate"],
       "command": "pnpm test:mac-builder",
       "produces": ["job lifecycle result", "adapter client result", "artifact reference result"]
+    },
+    {
+      "id": "full-scope-implementation",
+      "title": "Full requirement implementation while Apple account is under review",
+      "capabilities": ["linux-runnable", "mac-builder-required", "mcp-candidate"],
+      "command": "pnpm workflow:check && pnpm test:e2e && pnpm test:mac-builder",
+      "produces": ["feature-complete source", "contract validation", "browser e2e result", "Mac builder control-plane result", "ready-for-TestFlight notes"]
     },
     {
       "id": "aws-ec2-mac-builder-plan",
@@ -145,14 +154,28 @@
       "id": "release",
       "title": "TestFlight and App Store release",
       "capabilities": ["mac-builder-required", "apple-account-required", "mcp-candidate"],
-      "command": null,
+      "command": "pnpm visionos:testflight:archive",
       "produces": ["signed archive", "exported IPA", "upload result"]
+    },
+    {
+      "id": "apple-account-review-hold",
+      "title": "Apple account review hold",
+      "capabilities": ["apple-account-required"],
+      "command": "pnpm visionos:testflight:plan",
+      "produces": ["blocked upload gate", "account approval checklist", "post-approval release steps"]
+    },
+    {
+      "id": "testflight-feature-acceptance",
+      "title": "Post-approval TestFlight feature acceptance",
+      "capabilities": ["mac-builder-required", "apple-account-required", "device-required", "mcp-candidate"],
+      "command": "pnpm visionos:testflight:archive",
+      "produces": ["TestFlight build", "Vision Pro install", "feature-by-feature local acceptance record", "diagnostics feedback"]
     },
     {
       "id": "app-store-release-plan",
       "title": "App Store and TestFlight release plan",
       "capabilities": ["mac-builder-required", "apple-account-required", "mcp-candidate"],
-      "command": null,
+      "command": "pnpm visionos:testflight:plan",
       "produces": ["signing preflight", "IPA validation", "upload backend policy", "TestFlight checklist", "review checklist"]
     }
   ]

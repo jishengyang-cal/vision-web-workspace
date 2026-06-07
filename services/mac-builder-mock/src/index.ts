@@ -53,7 +53,13 @@ async function route(request: IncomingMessage, response: ServerResponse) {
       ok: true,
       service: "vision-web-workspace-mac-builder-mock",
       mode: "mock",
-      capabilities: ["visionos.build", "visionos.testSimulator", "visionos.archive"]
+      capabilities: [
+        "visionos.build",
+        "visionos.testSimulator",
+        "visionos.archive",
+        "visionos.exportIpa",
+        "visionos.uploadTestFlight"
+      ]
     });
     return;
   }

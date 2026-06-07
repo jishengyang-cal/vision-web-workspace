@@ -12,6 +12,42 @@ test("workspace opens and can create a terminal window through the gateway", asy
   await expect(page.getByText("Terminal 2")).toBeVisible();
 });
 
+test("window chrome can create, minimize, and restore browser-like windows", async ({ page }) => {
+  await page.goto("/");
+
+  const terminalWindow = page.locator(".spatial-window").filter({ hasText: "Terminal" }).first();
+  const initialRect = await terminalWindow.evaluate((element) => ({
+    left: Number((element as HTMLElement).style.left.replace("px", "")),
+    top: Number((element as HTMLElement).style.top.replace("px", "")),
+    width: Number((element as HTMLElement).style.width.replace("px", "")),
+    height: Number((element as HTMLElement).style.height.replace("px", ""))
+  }));
+
+  await page.getByRole("button", { name: "New window beside Terminal", exact: true }).click();
+  await expect(page.getByText("Terminal 2")).toBeVisible();
+
+  const newTerminalWindow = page.locator(".spatial-window").filter({ hasText: "Terminal 2" }).first();
+  const newRect = await newTerminalWindow.evaluate((element) => ({
+    left: Number((element as HTMLElement).style.left.replace("px", "")),
+    top: Number((element as HTMLElement).style.top.replace("px", "")),
+    width: Number((element as HTMLElement).style.width.replace("px", "")),
+    height: Number((element as HTMLElement).style.height.replace("px", ""))
+  }));
+
+  expect(newRect.left).toBeGreaterThan(initialRect.left);
+  expect(newRect.top).toBe(initialRect.top);
+  expect(newRect.width).toBe(initialRect.width);
+  expect(newRect.height).toBe(initialRect.height);
+
+  await page.getByRole("button", { name: "Minimize Terminal", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Restore Terminal", exact: true })).toBeVisible();
+  await expect(page.locator(".spatial-window")).toHaveCount(3);
+
+  await page.getByRole("button", { name: "Restore Terminal", exact: true }).click();
+  await expect(page.locator(".spatial-window")).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "Restore Terminal", exact: true })).toHaveCount(0);
+});
+
 test("gateway exposes native workspace layout and session APIs", async ({ request }) => {
   const layoutResponse = await request.get("http://127.0.0.1:3001/workspaces/local-dev-workspace/layout");
   expect(layoutResponse.ok()).toBeTruthy();

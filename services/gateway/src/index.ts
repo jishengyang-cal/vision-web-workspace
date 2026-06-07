@@ -138,6 +138,7 @@ function normalizeWindow(window: WebWindowSpec, index: number): WebWindowSpec {
     bookmarkId: window.bookmarkId ?? null,
     opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
     pose3D: window.pose3D ?? createDefaultWindowPose3D(index),
+    minimized: window.minimized ?? false,
     lockMode: window.lockMode ?? "screen-locked",
     clipboardPolicy: window.clipboardPolicy ?? "platform-default",
     createdAt: window.createdAt ?? now,

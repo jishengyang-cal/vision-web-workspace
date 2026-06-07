@@ -116,10 +116,29 @@ final class WorkspaceStore: ObservableObject {
             return
         }
 
+        let sourceWindow = activeVisibleWindow()
+
         Task {
             do {
                 let session = try await client.createSession(workspaceId: layout.id, kind: kind, windowId: nil)
-                appendWindow(for: session)
+                appendWindow(for: session, sourceWindow: sourceWindow)
+                errorMessage = nil
+            } catch {
+                errorMessage = "Session creation failed"
+            }
+        }
+    }
+
+    func openSibling(of sourceWindow: GatewayWindow) {
+        guard layout.windows.count < WorkspaceWindowDefaults.maximumWindowCount else {
+            errorMessage = "Maximum 10 windows reached"
+            return
+        }
+
+        Task {
+            do {
+                let session = try await client.createSession(workspaceId: layout.id, kind: sourceWindow.kind, windowId: nil)
+                appendWindow(for: session, sourceWindow: sourceWindow)
                 errorMessage = nil
             } catch {
                 errorMessage = "Session creation failed"
@@ -128,6 +147,10 @@ final class WorkspaceStore: ObservableObject {
     }
 
     func focus(windowId: String) {
+        guard layout.windows.first(where: { $0.id == windowId })?.minimized != true else {
+            return
+        }
+
         let nextZ = (layout.windows.map(\.zIndex).max() ?? 0) + 1
         layout.windows = layout.windows.map { current in
             var copy = current
@@ -143,11 +166,43 @@ final class WorkspaceStore: ObservableObject {
 
     func close(windowId: String) {
         layout.windows.removeAll { $0.id == windowId }
-        let nextActive = layout.windows.max { $0.zIndex < $1.zIndex }
+        let nextActive = topVisibleWindow()
         layout.activeWindowId = nextActive?.id
         layout.windows = layout.windows.map { current in
             var copy = current
             copy.focused = current.id == nextActive?.id
+            return copy
+        }
+        touchLayout()
+    }
+
+    func minimize(windowId: String) {
+        updateWindow(windowId: windowId, allowLocked: true) { window in
+            window.minimized = true
+            window.focused = false
+        }
+
+        let nextActive = topVisibleWindow()
+        layout.activeWindowId = nextActive?.id
+        layout.windows = layout.windows.map { current in
+            var copy = current
+            copy.focused = current.id == nextActive?.id
+            return copy
+        }
+        touchLayout()
+    }
+
+    func restore(windowId: String) {
+        let nextZ = (layout.windows.map(\.zIndex).max() ?? 0) + 1
+        updateWindow(windowId: windowId, allowLocked: true) { window in
+            window.minimized = false
+            window.focused = true
+            window.zIndex = nextZ
+        }
+        layout.activeWindowId = windowId
+        layout.windows = layout.windows.map { current in
+            var copy = current
+            copy.focused = current.id == windowId
             return copy
         }
         touchLayout()
@@ -219,7 +274,7 @@ final class WorkspaceStore: ObservableObject {
         touchLayout()
     }
 
-    private func appendWindow(for session: GatewaySession) {
+    private func appendWindow(for session: GatewaySession, sourceWindow: GatewayWindow?) {
         guard layout.windows.count < WorkspaceWindowDefaults.maximumWindowCount else {
             errorMessage = "Maximum 10 windows reached"
             return
@@ -228,6 +283,7 @@ final class WorkspaceStore: ObservableObject {
         let windowIndex = layout.windows.count
         let displayIndex = windowIndex + 1
         let now = ISO8601DateFormatter().string(from: Date())
+        let placement = placementForNewWindow(sourceWindow: sourceWindow, index: windowIndex)
         let window = GatewayWindow(
             id: session.id,
             title: "\(session.kind.capitalized) \(displayIndex)",
@@ -236,11 +292,12 @@ final class WorkspaceStore: ObservableObject {
             surfaceMode: session.mode ?? "direct-web",
             bookmarkId: nil,
             opacity: WorkspaceWindowDefaults.defaultOpacity,
-            rect: GatewayRect(x: 80.0 + Double(displayIndex * 32), y: 96.0 + Double(displayIndex * 24), width: 360, height: 520),
-            pose3D: WorkspaceWindowDefaults.pose3D(index: windowIndex),
+            rect: placement.rect,
+            pose3D: placement.pose3D,
             minSize: GatewaySize(width: 320, height: 240),
             zIndex: displayIndex,
             focused: true,
+            minimized: false,
             locked: false,
             lockMode: "screen-locked",
             clipboardPolicy: "platform-default",
@@ -254,6 +311,55 @@ final class WorkspaceStore: ObservableObject {
         } + [window]
         layout.activeWindowId = window.id
         touchLayout()
+    }
+
+    private func activeVisibleWindow() -> GatewayWindow? {
+        guard let activeWindowId = layout.activeWindowId else {
+            return topVisibleWindow()
+        }
+
+        return layout.windows.first { $0.id == activeWindowId && $0.minimized != true } ?? topVisibleWindow()
+    }
+
+    private func topVisibleWindow() -> GatewayWindow? {
+        layout.windows
+            .filter { $0.minimized != true }
+            .max { $0.zIndex < $1.zIndex }
+    }
+
+    private func placementForNewWindow(
+        sourceWindow: GatewayWindow?,
+        index: Int
+    ) -> (rect: GatewayRect, pose3D: GatewayWindowPose3D) {
+        guard let sourceWindow else {
+            let displayIndex = index + 1
+            return (
+                GatewayRect(x: 80.0 + Double(displayIndex * 32), y: 96.0 + Double(displayIndex * 24), width: 360, height: 520),
+                WorkspaceWindowDefaults.pose3D(index: index)
+            )
+        }
+
+        let leftSpace = sourceWindow.rect.x
+        let rightSpace = layout.viewport.width - (sourceWindow.rect.x + sourceWindow.rect.width)
+        let direction = rightSpace >= leftSpace ? 1.0 : -1.0
+        let gap = 24.0
+        let requestedX: Double
+        if direction > 0 {
+            requestedX = sourceWindow.rect.x + sourceWindow.rect.width + gap
+        } else {
+            requestedX = sourceWindow.rect.x - sourceWindow.rect.width - gap
+        }
+        let rect = GatewayRect(
+            x: min(max(0, requestedX), max(0, layout.viewport.width - sourceWindow.rect.width)),
+            y: min(max(0, sourceWindow.rect.y), max(0, layout.viewport.height - sourceWindow.rect.height)),
+            width: sourceWindow.rect.width,
+            height: sourceWindow.rect.height
+        )
+        let poseGap = max(0.62, 0.72 * sourceWindow.pose3D.scale)
+        var pose = sourceWindow.pose3D
+        pose.x = sourceWindow.pose3D.x + direction * poseGap
+
+        return (rect, pose)
     }
 
     private func touchLayout() {
@@ -281,6 +387,7 @@ extension GatewayLayout {
                 minSize: GatewaySize(width: 360, height: 240),
                 zIndex: 3,
                 focused: true,
+                minimized: false,
                 locked: false,
                 lockMode: "screen-locked",
                 clipboardPolicy: "platform-default",
@@ -300,6 +407,7 @@ extension GatewayLayout {
                 minSize: GatewaySize(width: 420, height: 300),
                 zIndex: 2,
                 focused: false,
+                minimized: false,
                 locked: false,
                 lockMode: "screen-locked",
                 clipboardPolicy: "platform-default",
@@ -319,6 +427,7 @@ extension GatewayLayout {
                 minSize: GatewaySize(width: 360, height: 240),
                 zIndex: 1,
                 focused: false,
+                minimized: false,
                 locked: false,
                 lockMode: "screen-locked",
                 clipboardPolicy: "platform-default",

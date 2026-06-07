@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID, createHash } from "node:crypto";
-import { createReadStream, mkdirSync, statSync } from "node:fs";
-import { readdir, writeFile } from "node:fs/promises";
+import { createReadStream, existsSync, mkdirSync, statSync, symlinkSync } from "node:fs";
+import { copyFile, readdir, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import {
@@ -69,7 +69,13 @@ async function route(request: IncomingMessage, response: ServerResponse) {
       mode: "native-agent",
       platform: process.platform,
       nativeExecutionAvailable: process.platform === "darwin",
-      capabilities: ["visionos.build", "visionos.testSimulator", "visionos.archive"]
+      capabilities: [
+        "visionos.build",
+        "visionos.testSimulator",
+        "visionos.archive",
+        "visionos.exportIpa",
+        "visionos.uploadTestFlight"
+      ]
     });
     return;
   }
@@ -215,24 +221,7 @@ async function runNativeCommand(stored: StoredJob) {
   }
 
   if (job.kind === "archive") {
-    await runChecked(
-      job,
-      "xcodebuild",
-      [
-        "-project",
-        projectPath,
-        "-scheme",
-        job.request.target.scheme,
-        "-configuration",
-        "Release",
-        "-archivePath",
-        join(artifactDir, "VisionWebWorkspace.xcarchive"),
-        "-resultBundlePath",
-        resultBundlePath,
-        "archive"
-      ],
-      repoDir
-    );
+    await runArchiveCommand(stored, resultBundlePath);
     return;
   }
 
@@ -256,6 +245,233 @@ async function runNativeCommand(stored: StoredJob) {
     ],
     repoDir
   );
+}
+
+async function runArchiveCommand(stored: StoredJob, resultBundlePath: string) {
+  const { job, repoDir, artifactDir } = stored;
+  const projectPath = job.request.project.projectPath;
+  const archivePath = join(artifactDir, "VisionWebWorkspace.xcarchive");
+  const exportPath = join(artifactDir, "export");
+  const exportOptionsPath = join(artifactDir, "ExportOptions.plist");
+
+  await writeFile(exportOptionsPath, exportOptionsPlist(job));
+
+  const archiveArgs = [
+    "-project",
+    projectPath,
+    "-scheme",
+    job.request.target.scheme,
+    "-configuration",
+    "Release",
+    "-destination",
+    archiveDestination(job),
+    "-sdk",
+    job.request.target.sdk,
+    "-archivePath",
+    archivePath,
+    "-resultBundlePath",
+    resultBundlePath,
+    "archive"
+  ];
+
+  if (allowProvisioningUpdates(job)) {
+    archiveArgs.push("-allowProvisioningUpdates");
+  }
+
+  await runChecked(job, "xcodebuild", archiveArgs, repoDir);
+
+  mkdirSync(exportPath, { recursive: true });
+  const exportArgs = [
+    "-exportArchive",
+    "-archivePath",
+    archivePath,
+    "-exportPath",
+    exportPath,
+    "-exportOptionsPlist",
+    exportOptionsPath
+  ];
+
+  if (allowProvisioningUpdates(job)) {
+    exportArgs.push("-allowProvisioningUpdates");
+  }
+
+  await runChecked(job, "xcodebuild", exportArgs, repoDir);
+
+  const ipaPath = await findFileByExtension(exportPath, ".ipa");
+  if (!ipaPath) {
+    throw new Error("Archive export completed without producing an IPA.");
+  }
+
+  const rootIpaPath = join(artifactDir, basename(ipaPath));
+  await copyFile(ipaPath, rootIpaPath);
+
+  if (shouldUploadToTestFlight(job)) {
+    await uploadIpaToTestFlight(stored, rootIpaPath);
+  }
+}
+
+async function uploadIpaToTestFlight(stored: StoredJob, ipaPath: string) {
+  const { job } = stored;
+  ensureAppStoreConnectKeyMaterial();
+
+  const keyId = process.env.MAC_BUILDER_APP_STORE_CONNECT_API_KEY_ID;
+  const issuerId = process.env.MAC_BUILDER_APP_STORE_CONNECT_API_ISSUER_ID;
+  if (!keyId || !issuerId) {
+    throw new Error("TestFlight upload requires App Store Connect API key id and issuer id.");
+  }
+
+  appendLog(job, "info", "Uploading IPA to App Store Connect for TestFlight processing.");
+  await runChecked(
+    job,
+    "xcrun",
+    [
+      "altool",
+      "--upload-app",
+      "--type",
+      "ios",
+      "-f",
+      ipaPath,
+      "--apiKey",
+      keyId,
+      "--apiIssuer",
+      issuerId
+    ],
+    stored.repoDir,
+    {
+      maskedArgs: [
+        "altool",
+        "--upload-app",
+        "--type",
+        "ios",
+        "-f",
+        ipaPath,
+        "--apiKey",
+        "***",
+        "--apiIssuer",
+        "***"
+      ]
+    }
+  );
+}
+
+function exportOptionsPlist(job: MutableJob) {
+  const teamId = job.request.metadata?.teamId ?? process.env.APPLE_TEAM_ID;
+  const signingStyle = job.request.metadata?.signingStyle ?? process.env.MAC_BUILDER_SIGNING_STYLE ?? "automatic";
+  const method = exportOptionsMethod(job);
+  const teamIdBlock = teamId
+    ? `\n\t<key>teamID</key>\n\t<string>${escapePlist(teamId)}</string>`
+    : "";
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+\t<key>method</key>
+\t<string>${escapePlist(method)}</string>
+\t<key>signingStyle</key>
+\t<string>${escapePlist(signingStyle)}</string>
+\t<key>stripSwiftSymbols</key>
+\t<true/>
+\t<key>thinning</key>
+\t<string>&lt;none&gt;</string>${teamIdBlock}
+</dict>
+</plist>
+`;
+}
+
+function exportOptionsMethod(job: MutableJob) {
+  if (job.request.metadata?.xcodeExportMethod) {
+    return job.request.metadata.xcodeExportMethod;
+  }
+
+  if (job.request.kind !== "archive") {
+    return "debugging";
+  }
+
+  switch (job.request.exportMethod) {
+    case "app-store":
+      return "app-store-connect";
+    case "ad-hoc":
+      return "release-testing";
+    case "development":
+      return "debugging";
+  }
+}
+
+function archiveDestination(job: MutableJob) {
+  if (job.request.metadata?.archiveDestination) {
+    return job.request.metadata.archiveDestination;
+  }
+
+  if (job.request.target.destination && !/Simulator/i.test(job.request.target.destination)) {
+    return job.request.target.destination;
+  }
+
+  return "generic/platform=visionOS";
+}
+
+function allowProvisioningUpdates(job: MutableJob) {
+  return (
+    job.request.metadata?.allowProvisioningUpdates === "true" ||
+    process.env.MAC_BUILDER_ALLOW_PROVISIONING_UPDATES === "1"
+  );
+}
+
+function shouldUploadToTestFlight(job: MutableJob) {
+  return (
+    job.request.metadata?.testflightUpload === "true" &&
+    process.env.MAC_BUILDER_ENABLE_TESTFLIGHT_UPLOAD === "1"
+  );
+}
+
+function ensureAppStoreConnectKeyMaterial() {
+  const keyId = process.env.MAC_BUILDER_APP_STORE_CONNECT_API_KEY_ID;
+  if (!keyId) {
+    throw new Error("TestFlight upload requires MAC_BUILDER_APP_STORE_CONNECT_API_KEY_ID.");
+  }
+
+  const keyDir = join(process.env.HOME ?? ".", ".appstoreconnect", "private_keys");
+  const targetPath = join(keyDir, `AuthKey_${keyId}.p8`);
+  const sourcePath = process.env.MAC_BUILDER_APP_STORE_CONNECT_API_PRIVATE_KEY_PATH;
+
+  if (existsSync(targetPath)) {
+    return;
+  }
+
+  if (!sourcePath || !existsSync(sourcePath)) {
+    throw new Error("TestFlight upload requires an App Store Connect private key file.");
+  }
+
+  mkdirSync(keyDir, { recursive: true });
+  symlinkSync(sourcePath, targetPath);
+}
+
+async function findFileByExtension(directory: string, extension: string): Promise<string | null> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      const nested = await findFileByExtension(path, extension);
+      if (nested) {
+        return nested;
+      }
+      continue;
+    }
+
+    if (entry.isFile() && entry.name.endsWith(extension)) {
+      return path;
+    }
+  }
+
+  return null;
+}
+
+function escapePlist(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 async function runChecked(
@@ -387,6 +603,9 @@ function artifactType(name: string, kind: MacBuildJobKind): MacBuildArtifact["ty
     return "screenshot";
   }
   if (name.endsWith(".log")) {
+    return "log";
+  }
+  if (name.endsWith(".plist")) {
     return "log";
   }
   return kind === "archive" ? "archive" : "build-products";

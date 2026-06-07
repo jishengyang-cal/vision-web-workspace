@@ -1,4 +1,14 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
+
+private struct WorkspaceDiagnostics: Codable {
+    var generatedAt: String
+    var appVersion: String
+    var buildNumber: String
+    var layout: GatewayLayout
+}
 
 struct WorkspaceMenuBarView: View {
     @ObservedObject var store: WorkspaceStore
@@ -32,6 +42,10 @@ struct WorkspaceMenuBarView: View {
 
             Button("Save") {
                 store.save()
+            }
+
+            Button("Copy Diagnostics") {
+                copyDiagnostics()
             }
 
             Spacer(minLength: 12)
@@ -86,6 +100,33 @@ struct WorkspaceMenuBarView: View {
                 store.close(windowId: window.id)
             }
         }
+    }
+
+    private func copyDiagnostics() {
+        #if canImport(UIKit)
+        let info = Bundle.main.infoDictionary ?? [:]
+        let diagnostics = WorkspaceDiagnostics(
+            generatedAt: ISO8601DateFormatter().string(from: Date()),
+            appVersion: info["CFBundleShortVersionString"] as? String ?? "unknown",
+            buildNumber: info["CFBundleVersion"] as? String ?? "unknown",
+            layout: store.layout
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+        guard
+            let data = try? encoder.encode(diagnostics),
+            let text = String(data: data, encoding: .utf8)
+        else {
+            store.errorMessage = "Diagnostics unavailable"
+            return
+        }
+
+        UIPasteboard.general.string = text
+        store.errorMessage = "Diagnostics copied"
+        #else
+        store.errorMessage = "Clipboard unavailable"
+        #endif
     }
 }
 

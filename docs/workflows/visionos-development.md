@@ -14,6 +14,29 @@ The Linux environment can prepare source, contracts, web simulator behavior,
 remote web development surfaces, static checks, and workflow plans. It must not
 pretend to run Apple's native visionOS toolchain.
 
+## Current release mode
+
+The Apple account path has an existing issue under review. That blocks
+TestFlight upload, App Store Connect processing, and local Vision Pro
+acceptance through TestFlight, but it does not block product implementation.
+
+The active mode is implementation-first:
+
+1. Implement the full agreed requirement set in source, contracts, gateway,
+   simulator, and native visionOS shell.
+2. Validate each feature with Linux-runnable tests, browser e2e, mock Mac
+   Builder lifecycle tests, and real Mac Builder build checks when signing is
+   not required.
+3. Mark features as ready for TestFlight only when they have diagnostics,
+   reproducible steps, and no known local control-plane failures.
+4. Keep upload, tester assignment, and local Vision Pro acceptance behind the
+   Apple account approval gate.
+5. After Apple approval, archive/upload through the Mac Builder and test every
+   feature locally on Vision Pro through TestFlight.
+
+This avoids waiting idle for account approval while preserving Apple's signing
+and distribution boundary.
+
 ## Capability labels
 
 - `linux-runnable`: can run in this repository today.
@@ -36,6 +59,7 @@ pretend to run Apple's native visionOS toolchain.
 | Web e2e | linux-runnable | `pnpm test:e2e` | Verifies browser simulator and gateway smoke behavior. |
 | Mock Mac builder | linux-runnable, mcp-candidate | `pnpm dev:mac-builder:mock` | Simulates Mac builder job lifecycle without running Xcode. |
 | Mac builder e2e | linux-runnable, mcp-candidate | `pnpm test:mac-builder` | Verifies build job request, polling, logs, artifacts, `.xcresult`, and failure handling. |
+| Full-scope implementation | linux-runnable, mac-builder-required, mcp-candidate | `pnpm workflow:check && pnpm test:e2e && pnpm test:mac-builder` | Keeps all product requirements moving while Apple account approval is pending. |
 | AWS EC2 Mac builder plan | mac-builder-required, mcp-candidate | documented workflow | Defines Dedicated Host, bootstrap, artifact, audit, and teardown workflow. |
 | Immersive environment reconstruction | mac-builder-required, device-required, mcp-candidate | documented workflow | Rebuilds the office and water lounge reference scenes as full immersive RealityKit environments. |
 | Swift source intelligence | optional-swift-toolchain | none yet | Future SourceKit-LSP and swift-format checks when Swift exists on Linux. |
@@ -43,8 +67,10 @@ pretend to run Apple's native visionOS toolchain.
 | Native build | mac-builder-required | `pnpm visionos:mac-build:check` | Checks that native build must be delegated to Mac builder. |
 | Official simulator debug | mac-builder-required | future Mac builder MCP | Runs visionOS simulator, captures logs, screenshots, and `.xcresult`. |
 | Device test | mac-builder-required, device-required | future device lab MCP | Installs and tests on paired Apple Vision Pro. |
-| TestFlight/App Store | mac-builder-required, apple-account-required | future release MCP | Archives, signs, exports, and uploads through Apple tooling. |
-| App Store release plan | mac-builder-required, apple-account-required, mcp-candidate | documented workflow | Defines signing preflight, IPA validation, upload backend policy, TestFlight, and review checklist. |
+| TestFlight/App Store | mac-builder-required, apple-account-required | `pnpm visionos:testflight:archive` | Archives, signs, exports, and optionally uploads through the Mac Builder release gate. |
+| Apple account review hold | apple-account-required | `pnpm visionos:testflight:plan` | Keeps the blocked upload gate explicit while implementation continues. |
+| TestFlight feature acceptance | mac-builder-required, apple-account-required, device-required | `pnpm visionos:testflight:archive` | Runs post-approval TestFlight builds and local Vision Pro feature-by-feature acceptance. |
+| App Store release plan | mac-builder-required, apple-account-required, mcp-candidate | `pnpm visionos:testflight:plan` | Defines signing preflight, IPA validation, upload backend policy, TestFlight, and review checklist. |
 
 ## Development loop in this repository
 
@@ -58,6 +84,11 @@ pretend to run Apple's native visionOS toolchain.
 8. Run `pnpm workflow:check` before pushing.
 9. Send build/test jobs to the Mac builder MCP instead of running Xcode
    commands locally.
+10. While Apple account approval is pending, keep implementing the full scope
+    and record each finished feature as ready for TestFlight.
+11. After Apple approval, send an archive/export/upload job with
+    `pnpm visionos:testflight:archive`, install the processed build on Apple
+    Vision Pro through TestFlight, and test each ready feature locally.
 
 ## Native project handoff
 

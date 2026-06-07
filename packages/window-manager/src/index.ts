@@ -20,8 +20,10 @@ export type WorkspaceAction =
   | { type: "focus"; windowId: string }
   | { type: "move"; windowId: string; delta: { x: number; y: number } }
   | { type: "resize"; windowId: string; delta: { width: number; height: number } }
-  | { type: "create"; window: Omit<WebWindowSpec, "zIndex" | "focused"> }
+  | { type: "create"; window: Omit<WebWindowSpec, "zIndex" | "focused">; sourceWindowId?: string }
   | { type: "close"; windowId: string }
+  | { type: "minimize"; windowId: string }
+  | { type: "restore-window"; windowId: string }
   | { type: "set-url"; windowId: string; url: string }
   | { type: "set-opacity"; windowId: string; opacity: number }
   | { type: "set-lock-mode"; windowId: string; lockMode: WindowLockMode }
@@ -62,9 +64,13 @@ export function workspaceReducer(
         )
       }));
     case "create":
-      return createWindow(state, action.window);
+      return createWindow(state, action.window, action.sourceWindowId);
     case "close":
       return closeWindow(state, action.windowId);
+    case "minimize":
+      return minimizeWindow(state, action.windowId);
+    case "restore-window":
+      return restoreWindow(state, action.windowId);
     case "set-url":
       return updateWindow(state, action.windowId, (window) => ({
         ...window,
@@ -136,6 +142,7 @@ export function createWebWindow(
     rect: options.rect,
     pose3D: createDefaultWindowPose3D(0),
     minSize: options.minSize ?? { width: 360, height: 240 },
+    minimized: false,
     locked: options.locked ?? false,
     lockMode: "screen-locked",
     clipboardPolicy: "platform-default",
@@ -182,7 +189,7 @@ function focusWindow(state: WorkspaceState, windowId: string): WorkspaceState {
     activeWindowId: windowId,
     windows: state.windows.map((window) => ({
       ...window,
-      focused: window.id === windowId,
+      focused: window.id === windowId && !window.minimized,
       zIndex: window.id === windowId ? nextZ : window.zIndex
     }))
   });
@@ -190,7 +197,8 @@ function focusWindow(state: WorkspaceState, windowId: string): WorkspaceState {
 
 function createWindow(
   state: WorkspaceState,
-  window: Omit<WebWindowSpec, "zIndex" | "focused">
+  window: Omit<WebWindowSpec, "zIndex" | "focused">,
+  sourceWindowId?: string
 ): WorkspaceState {
   if (state.windows.length >= maxWorkspaceWindows) {
     return state;
@@ -199,14 +207,17 @@ function createWindow(
   const nextZ = Math.max(0, ...state.windows.map((item) => item.zIndex)) + 1;
   const now = new Date().toISOString();
   const index = state.windows.length;
+  const sourceWindow = choosePlacementSource(state, sourceWindowId);
+  const placement = placeNewWindow(state, window, sourceWindow, index);
   const newWindow: WebWindowSpec = {
     ...window,
     url: normalizeUrl(window.url),
     surfaceMode: window.surfaceMode ?? "direct-web",
     bookmarkId: window.bookmarkId ?? null,
     opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
-    rect: clampRect(window.rect, state.viewport, window.minSize),
-    pose3D: window.pose3D ?? createDefaultWindowPose3D(index),
+    rect: placement.rect,
+    pose3D: placement.pose3D,
+    minimized: false,
     lockMode: window.lockMode ?? "screen-locked",
     clipboardPolicy: window.clipboardPolicy ?? "platform-default",
     createdAt: window.createdAt ?? now,
@@ -227,7 +238,7 @@ function createWindow(
 
 function closeWindow(state: WorkspaceState, windowId: string): WorkspaceState {
   const windows = state.windows.filter((window) => window.id !== windowId);
-  const activeWindow = [...windows].sort((a, b) => b.zIndex - a.zIndex)[0];
+  const activeWindow = topVisibleWindow(windows);
 
   return stamp({
     ...state,
@@ -237,6 +248,110 @@ function closeWindow(state: WorkspaceState, windowId: string): WorkspaceState {
       focused: window.id === activeWindow?.id
     }))
   });
+}
+
+function minimizeWindow(state: WorkspaceState, windowId: string): WorkspaceState {
+  const windows = state.windows.map((window) =>
+    window.id === windowId
+      ? { ...window, minimized: true, focused: false, updatedAt: new Date().toISOString() }
+      : window
+  );
+  const activeWindow = topVisibleWindow(windows);
+
+  return stamp({
+    ...state,
+    activeWindowId: activeWindow?.id ?? null,
+    windows: windows.map((window) => ({
+      ...window,
+      focused: window.id === activeWindow?.id
+    }))
+  });
+}
+
+function restoreWindow(state: WorkspaceState, windowId: string): WorkspaceState {
+  const nextZ = Math.max(0, ...state.windows.map((window) => window.zIndex)) + 1;
+  const now = new Date().toISOString();
+
+  return stamp({
+    ...state,
+    activeWindowId: windowId,
+    windows: state.windows.map((window) =>
+      window.id === windowId
+        ? {
+            ...window,
+            minimized: false,
+            focused: true,
+            zIndex: nextZ,
+            updatedAt: now
+          }
+        : {
+            ...window,
+            minimized: window.minimized ?? false,
+            focused: false
+          }
+    )
+  });
+}
+
+function topVisibleWindow(windows: WebWindowSpec[]): WebWindowSpec | undefined {
+  return [...windows]
+    .filter((window) => !window.minimized)
+    .sort((a, b) => b.zIndex - a.zIndex)[0];
+}
+
+function choosePlacementSource(
+  state: WorkspaceState,
+  sourceWindowId?: string
+): WebWindowSpec | undefined {
+  return (
+    state.windows.find((window) => window.id === sourceWindowId && !window.minimized) ??
+    state.windows.find((window) => window.id === state.activeWindowId && !window.minimized) ??
+    topVisibleWindow(state.windows)
+  );
+}
+
+function placeNewWindow(
+  state: WorkspaceState,
+  window: Omit<WebWindowSpec, "zIndex" | "focused">,
+  sourceWindow: WebWindowSpec | undefined,
+  index: number
+): { rect: Rect; pose3D: WebWindowSpec["pose3D"] } {
+  if (!sourceWindow) {
+    return {
+      rect: clampRect(window.rect, state.viewport, window.minSize),
+      pose3D: window.pose3D ?? createDefaultWindowPose3D(index)
+    };
+  }
+
+  const leftSpace = sourceWindow.rect.x;
+  const rightSpace = state.viewport.width - (sourceWindow.rect.x + sourceWindow.rect.width);
+  const direction = rightSpace >= leftSpace ? 1 : -1;
+  const gap = 24;
+  const width = sourceWindow.rect.width;
+  const height = sourceWindow.rect.height;
+  const requestedX =
+    direction > 0
+      ? sourceWindow.rect.x + sourceWindow.rect.width + gap
+      : sourceWindow.rect.x - width - gap;
+  const rect = clampRect(
+    {
+      x: requestedX,
+      y: sourceWindow.rect.y,
+      width,
+      height
+    },
+    state.viewport,
+    window.minSize
+  );
+  const poseGap = Math.max(0.62, 0.72 * sourceWindow.pose3D.scale);
+
+  return {
+    rect,
+    pose3D: {
+      ...sourceWindow.pose3D,
+      x: sourceWindow.pose3D.x + direction * poseGap
+    }
+  };
 }
 
 function clampRect(rect: Rect, viewport: Size, minSize: Size): Rect {
@@ -275,6 +390,7 @@ function normalizeWindow(window: WebWindowSpec, index: number): WebWindowSpec {
     bookmarkId: window.bookmarkId ?? null,
     opacity: clamp(window.opacity ?? defaultWindowOpacity, minWindowOpacity, maxWindowOpacity),
     pose3D: window.pose3D ?? createDefaultWindowPose3D(index),
+    minimized: window.minimized ?? false,
     lockMode: window.lockMode ?? "screen-locked",
     clipboardPolicy: window.clipboardPolicy ?? "platform-default",
     createdAt: window.createdAt ?? now,

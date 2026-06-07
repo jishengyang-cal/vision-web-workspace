@@ -82,7 +82,7 @@ export function App() {
     }
   }
 
-  async function createWindow(kind: WindowKind) {
+  async function createWindow(kind: WindowKind, sourceWindow?: WebWindowSpec) {
     if (state.windows.length >= maxWorkspaceWindows) {
       return;
     }
@@ -94,6 +94,7 @@ export function App() {
 
     dispatch({
       type: "create",
+      ...(sourceWindow ? { sourceWindowId: sourceWindow.id } : {}),
       window: createWebWindow({
         id,
         kind,
@@ -134,6 +135,8 @@ export function App() {
     "--workspace-distance": `${state.pose.distanceMeters}`,
     "--workspace-scale": `${Math.max(0.68, Math.min(1.08, 1.35 / state.pose.distanceMeters))}`
   } as CSSProperties;
+  const visibleWindows = state.windows.filter((window) => !window.minimized);
+  const minimizedWindows = state.windows.filter((window) => window.minimized);
 
   return (
     <main className="shell">
@@ -214,14 +217,19 @@ export function App() {
 
       <section className="sim-stage">
         <div className="passthrough-grid" />
+        <MinimizedBubbleStrip
+          dispatch={dispatch}
+          windows={minimizedWindows}
+        />
         <div className="workspace-perspective" style={workspaceStyle}>
           <div className="workspace-root">
             <div className="workspace-header">
               <span>{state.name}</span>
               <span>{state.windows.length}/{maxWorkspaceWindows} screen-locked windows</span>
             </div>
-            {state.windows.map((window) => (
+            {visibleWindows.map((window) => (
               <SpatialWindow
+                createSibling={(sourceWindow) => void createWindow(sourceWindow.kind, sourceWindow)}
                 dispatch={dispatch}
                 inputLocked={frameInputLocked}
                 key={window.id}
@@ -232,6 +240,35 @@ export function App() {
         </div>
       </section>
     </main>
+  );
+}
+
+function MinimizedBubbleStrip({
+  windows,
+  dispatch
+}: {
+  windows: WebWindowSpec[];
+  dispatch: Dispatch<Parameters<typeof workspaceReducer>[1]>;
+}) {
+  if (windows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="minimized-bubbles" aria-label="Minimized windows">
+      {windows.map((window) => (
+        <button
+          aria-label={`Restore ${window.title}`}
+          className="minimized-bubble"
+          key={window.id}
+          onClick={() => dispatch({ type: "restore-window", windowId: window.id })}
+          type="button"
+        >
+          <span className={`kind-dot ${window.kind}`} />
+          <span>{window.title}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -266,10 +303,12 @@ async function resolveSessionUrl(
 
 function SpatialWindow({
   webWindow,
+  createSibling,
   dispatch,
   inputLocked
 }: {
   webWindow: WebWindowSpec;
+  createSibling: (window: WebWindowSpec) => void;
   dispatch: Dispatch<Parameters<typeof workspaceReducer>[1]>;
   inputLocked: boolean;
 }) {
@@ -363,13 +402,35 @@ function SpatialWindow({
           <span className={`kind-dot ${webWindow.kind}`} />
           <strong>{webWindow.title}</strong>
         </div>
-        <button
-          aria-label={`Close ${webWindow.title}`}
-          className="icon-button"
-          onClick={() => dispatch({ type: "close", windowId: webWindow.id })}
+        <div
+          className="titlebar-actions"
+          onPointerDown={(event) => event.stopPropagation()}
         >
-          x
-        </button>
+          <button
+            aria-label={`New window beside ${webWindow.title}`}
+            className="icon-button"
+            onClick={() => createSibling(webWindow)}
+            type="button"
+          >
+            +
+          </button>
+          <button
+            aria-label={`Minimize ${webWindow.title}`}
+            className="icon-button"
+            onClick={() => dispatch({ type: "minimize", windowId: webWindow.id })}
+            type="button"
+          >
+            -
+          </button>
+          <button
+            aria-label={`Close ${webWindow.title}`}
+            className="icon-button"
+            onClick={() => dispatch({ type: "close", windowId: webWindow.id })}
+            type="button"
+          >
+            x
+          </button>
+        </div>
       </div>
 
       <form className="addressbar" onSubmit={submitUrl}>

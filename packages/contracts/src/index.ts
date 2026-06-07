@@ -86,6 +86,7 @@ export interface WebWindowSpec {
   minSize: Size;
   zIndex: number;
   focused: boolean;
+  minimized: boolean;
   locked: boolean;
   lockMode: WindowLockMode;
   clipboardPolicy: ClipboardPolicy;
@@ -181,6 +182,19 @@ export type MacBuildArtifactType =
   | "log"
   | "screenshot";
 
+export type ReleaseUploadBackend =
+  | "official-transporter"
+  | "app-store-connect-api"
+  | "appuploader-cli";
+
+export type ReleaseUploadStatus =
+  | "not-requested"
+  | "queued"
+  | "uploaded"
+  | "processing"
+  | "ready-for-testflight"
+  | "failed";
+
 export interface MacBuilderAudit {
   requestId: string;
   actorId: string;
@@ -269,6 +283,29 @@ export interface MacBuildJob {
   xcresult?: MacBuildArtifact;
 }
 
+export interface TestFlightReleaseRequest {
+  repoRef: RepoRef;
+  bundleId: string;
+  version: string;
+  buildNumber: string;
+  macArchiveRequest: MacArchiveRequest;
+  uploadBackend: ReleaseUploadBackend;
+  internalOnly: boolean;
+  testerGroupId?: string;
+  audit: MacBuilderAudit;
+}
+
+export interface TestFlightReleaseResult {
+  status: ReleaseUploadStatus;
+  archiveJob?: MacBuildJob;
+  ipaArtifact?: MacBuildArtifact;
+  uploadLog?: MacBuildArtifact;
+  buildId?: string;
+  appStoreConnectUrl?: string;
+  warnings: string[];
+  errors: string[];
+}
+
 export interface CreateMacBuildJobResponse {
   job: MacBuildJob;
 }
@@ -336,6 +373,7 @@ export function createDefaultLayout(
         minSize: { width: 360, height: 240 },
         zIndex: 3,
         focused: true,
+        minimized: false,
         locked: false,
         lockMode: "screen-locked",
         clipboardPolicy: "platform-default",
@@ -355,6 +393,7 @@ export function createDefaultLayout(
         minSize: { width: 420, height: 300 },
         zIndex: 2,
         focused: false,
+        minimized: false,
         locked: false,
         lockMode: "screen-locked",
         clipboardPolicy: "platform-default",
@@ -374,6 +413,7 @@ export function createDefaultLayout(
         minSize: { width: 360, height: 240 },
         zIndex: 1,
         focused: false,
+        minimized: false,
         locked: false,
         lockMode: "screen-locked",
         clipboardPolicy: "platform-default",

@@ -1,9 +1,19 @@
 {
   "name": "visionos-app-store-release",
   "version": 1,
-  "status": "planned",
+  "status": "adapter-contract-implemented",
+  "currentReleaseMode": "implementation-first-account-review-hold",
+  "currentReleaseModeReason": "Apple account access has an existing issue under review. Full-scope implementation continues; TestFlight upload and Vision Pro local acceptance resume after approval.",
   "boundary": "Uploads and manages App Store Connect/TestFlight release steps through approved adapters. The browser simulator and Vision Pro client never receive Apple credentials, signing assets, or App Store Connect API keys.",
   "workflowDocument": "docs/workflows/app-store-release.md",
+  "implementedSurfaces": [
+    "scripts/visionos-workflow.mjs testflight-plan",
+    "scripts/visionos-workflow.mjs testflight-preflight",
+    "scripts/visionos-workflow.mjs testflight-archive",
+    "services/mac-builder-agent archive/export IPA path",
+    "services/mac-builder-agent opt-in TestFlight upload gate",
+    "services/mac-builder-mock archive/IPA lifecycle"
+  ],
   "capabilities": [
     {
       "id": "release.signingPreflight",

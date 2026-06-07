@@ -18,6 +18,15 @@ switch (command) {
   case "mac-build-check":
     await runMacBuildCheck();
     break;
+  case "testflight-plan":
+    printTestFlightPlan();
+    break;
+  case "testflight-preflight":
+    runTestFlightPreflight();
+    break;
+  case "testflight-archive":
+    await runTestFlightArchive();
+    break;
   case "help":
   default:
     printHelp();
@@ -27,6 +36,13 @@ switch (command) {
 function printPlan() {
   console.log(`${workflow.name} workflow v${workflow.version}`);
   console.log(`Boundary: ${workflow.hardBoundary}\n`);
+  if (workflow.releaseMode) {
+    console.log(`Release mode: ${workflow.releaseMode}`);
+    if (workflow.releaseModeReason) {
+      console.log(`Reason: ${workflow.releaseModeReason}`);
+    }
+    console.log("");
+  }
 
   printNativeProjectSummary();
   console.log("");
@@ -94,9 +110,92 @@ async function runMacBuildCheck() {
   console.log("Build execution must still go through an audited builder adapter before deployment authority is granted.");
 }
 
-async function runMacBuilderAdapter(builderUrl) {
+function printTestFlightPlan() {
+  console.log("Vision Pro TestFlight workflow\n");
+  console.log("Current release mode:");
+  console.log("  Apple account access is under review. Continue full-scope implementation now;");
+  console.log("  run TestFlight upload and local Vision Pro acceptance after Apple approval.");
+  console.log("");
+  console.log("Purpose:");
+  console.log("  Build, export, and optionally upload a visionOS build through the remote Mac Builder.");
+  console.log("");
+  console.log("Flow:");
+  console.log("  Linux repo -> Mac Builder archive -> IPA artifact -> optional App Store Connect upload -> TestFlight -> Vision Pro");
+  console.log("");
+  console.log("Required for archive/export:");
+  console.log("  VISIONOS_MAC_BUILDER_URL=http://<builder>:3201");
+  console.log("  APPLE_TEAM_ID=<team id>");
+  console.log("  signing assets installed on the Mac Builder");
+  console.log("");
+  console.log("Required only for upload:");
+  console.log("  VISIONOS_TESTFLIGHT_UPLOAD=1");
+  console.log("  MAC_BUILDER_ENABLE_TESTFLIGHT_UPLOAD=1 on the Mac Builder");
+  console.log("  MAC_BUILDER_APP_STORE_CONNECT_API_KEY_ID=<key id>");
+  console.log("  MAC_BUILDER_APP_STORE_CONNECT_API_ISSUER_ID=<issuer id>");
+  console.log("  MAC_BUILDER_APP_STORE_CONNECT_API_PRIVATE_KEY_PATH=<path on Mac Builder>");
+  console.log("");
+  console.log("Commands:");
+  console.log("  pnpm visionos:testflight:preflight");
+  console.log("  VISIONOS_MAC_BUILDER_URL=http://127.0.0.1:3201 pnpm visionos:testflight:archive");
+}
+
+function runTestFlightPreflight() {
+  const missing = [];
+  const uploadRequested = process.env.VISIONOS_TESTFLIGHT_UPLOAD === "1";
+
+  if (!process.env.VISIONOS_MAC_BUILDER_URL) {
+    missing.push("VISIONOS_MAC_BUILDER_URL");
+  }
+  if (!process.env.APPLE_TEAM_ID) {
+    missing.push("APPLE_TEAM_ID");
+  }
+  if (uploadRequested) {
+    for (const name of [
+      "MAC_BUILDER_APP_STORE_CONNECT_API_KEY_ID",
+      "MAC_BUILDER_APP_STORE_CONNECT_API_ISSUER_ID",
+      "MAC_BUILDER_APP_STORE_CONNECT_API_PRIVATE_KEY_PATH"
+    ]) {
+      if (!process.env[name]) {
+        missing.push(name);
+      }
+    }
+  }
+
+  console.log("Vision Pro TestFlight preflight");
+  console.log(`  mac builder: ${process.env.VISIONOS_MAC_BUILDER_URL ? "configured" : "missing"}`);
+  console.log(`  Apple team id: ${process.env.APPLE_TEAM_ID ? "configured" : "missing"}`);
+  console.log(`  upload requested: ${uploadRequested ? "yes" : "no"}`);
+  console.log(`  bundle id: ${process.env.VISIONOS_BUNDLE_ID ?? "com.jishengyang.visionwebworkspace"}`);
+  console.log(`  export method: ${process.env.VISIONOS_EXPORT_METHOD ?? "app-store"}`);
+
+  if (missing.length > 0) {
+    console.error("\nMissing TestFlight workflow configuration:");
+    for (const name of missing) {
+      console.error(`- ${name}`);
+    }
+    process.exit(2);
+  }
+
+  console.log("\nTestFlight workflow configuration is present.");
+}
+
+async function runTestFlightArchive() {
+  const builderUrl = process.env.VISIONOS_MAC_BUILDER_URL;
+  if (!builderUrl) {
+    console.error("TestFlight archive requires VISIONOS_MAC_BUILDER_URL.");
+    process.exit(2);
+  }
+
+  await runMacBuilderAdapter(builderUrl, {
+    kind: "archive",
+    testflight: true,
+    upload: process.env.VISIONOS_TESTFLIGHT_UPLOAD === "1"
+  });
+}
+
+async function runMacBuilderAdapter(builderUrl, options = {}) {
   const baseUrl = builderUrl.replace(/\/$/, "");
-  const request = createMacBuilderRequest();
+  const request = createMacBuilderRequest(options);
 
   console.log(`Mac builder URL configured: ${baseUrl}`);
   console.log(`Submitting ${request.kind} job for ${request.repoRef.repository} at ${request.repoRef.commitSha}.`);
@@ -110,7 +209,8 @@ async function runMacBuilderAdapter(builderUrl) {
   console.log(`Mac builder job accepted: ${job.id}`);
   console.log(`status: ${job.status}`);
 
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  const maxPolls = Number(process.env.VISIONOS_MAC_BUILDER_MAX_POLLS ?? (request.kind === "archive" ? 240 : 12));
+  for (let attempt = 0; attempt < maxPolls; attempt += 1) {
     if (isTerminalStatus(job.status)) {
       break;
     }
@@ -135,9 +235,9 @@ async function runMacBuilderAdapter(builderUrl) {
   process.exit(2);
 }
 
-function createMacBuilderRequest() {
+function createMacBuilderRequest(options = {}) {
   const now = new Date().toISOString();
-  const kind = normalizeJobKind(process.env.VISIONOS_MAC_BUILDER_JOB_KIND ?? "build");
+  const kind = normalizeJobKind(options.kind ?? process.env.VISIONOS_MAC_BUILDER_JOB_KIND ?? "build");
   const repoRef = createRepoRef();
   const requestId = `mac-build-${Date.now()}`;
   const base = {
@@ -168,7 +268,14 @@ function createMacBuilderRequest() {
     capabilities: ["mac-builder-required", "mcp-candidate"],
     metadata: {
       adapter: "visionos-workflow",
-      mode: process.env.VISIONOS_MAC_BUILDER_MODE ?? "mock-compatible"
+      mode: process.env.VISIONOS_MAC_BUILDER_MODE ?? "mock-compatible",
+      ...(process.env.APPLE_TEAM_ID ? { teamId: process.env.APPLE_TEAM_ID } : {}),
+      ...(process.env.MAC_BUILDER_SIGNING_STYLE ? { signingStyle: process.env.MAC_BUILDER_SIGNING_STYLE } : {}),
+      ...(process.env.MAC_BUILDER_ALLOW_PROVISIONING_UPDATES === "1"
+        ? { allowProvisioningUpdates: "true" }
+        : {}),
+      ...(options.testflight ? { releaseChannel: "testflight" } : {}),
+      ...(options.upload ? { testflightUpload: "true" } : {})
     }
   };
 
@@ -183,9 +290,10 @@ function createMacBuilderRequest() {
       target: {
         ...base.target,
         configuration: process.env.VISIONOS_CONFIGURATION ?? "Release",
+        destination: process.env.VISIONOS_DESTINATION ?? "generic/platform=visionOS",
         sdk: process.env.VISIONOS_SDK ?? "xros"
       },
-      exportMethod: process.env.VISIONOS_EXPORT_METHOD ?? "development"
+      exportMethod: process.env.VISIONOS_EXPORT_METHOD ?? (options.testflight ? "app-store" : "development")
     };
   }
 
@@ -387,4 +495,7 @@ function printHelp() {
   console.log("  native-plan      Print the native project and Mac Builder command plan.");
   console.log("  preflight        Run local tool and compliance checks.");
   console.log("  mac-build-check  Check native visionOS build capability boundary.");
+  console.log("  testflight-plan      Print the cloud TestFlight workflow plan.");
+  console.log("  testflight-preflight Verify local release workflow configuration.");
+  console.log("  testflight-archive   Submit a Mac Builder archive/export/upload request.");
 }

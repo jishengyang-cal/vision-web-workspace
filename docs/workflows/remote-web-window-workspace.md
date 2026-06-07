@@ -15,6 +15,7 @@ The Vision Pro app owns only the spatial window shell and local input
 integration:
 
 - window creation, close, focus, placement, resize, scale, rotation, and lock
+- browser-like per-window create, minimize, restore, and close controls
 - URL/session opening
 - back, forward, reload, and basic navigation controls
 - keyboard input and system dictation where the focused web surface supports it
@@ -115,6 +116,7 @@ RemoteWebWindow
   minSize
   zIndex
   focused
+  minimized
   locked
   lockMode: unlocked | screen-locked | world-locked
   clipboardPolicy
@@ -138,6 +140,27 @@ The workspace must enforce a maximum of 10 open windows. Attempts to create an
 eleventh window should fail closed with a user-readable message and an audit or
 diagnostic event from the gateway/control layer.
 
+Each window owns browser-like chrome in the top-right corner:
+
+```text
++  create a sibling window
+-  minimize the current window
+x  close the current window
+```
+
+Minimizing a window keeps its rect and 3D pose intact, hides the large web
+surface, and represents it as a small centered top bubble. Looking at the
+bubble and pinching on Vision Pro restores the window to its previous position.
+If multiple windows are minimized, the bubbles remain centered as a horizontal
+strip.
+
+Sibling-window placement uses the active/source window as the anchor. The new
+window opens on the side with more available horizontal space. If the anchor is
+centered or both sides are equal, the new window opens on the right. The new
+window inherits the anchor's width, height, vertical position, scale, depth, and
+angle, while remaining movable, scalable, rotatable, and resizable after it is
+created.
+
 ## Menu bar requirements
 
 The menu bar is not a business dashboard. It is a remote web workspace control
@@ -156,6 +179,8 @@ Minimum controls:
 - active window opacity
 - active window lock mode
 - close active window
+- per-window create/minimize/close chrome
+- centered minimized-window restore bubbles
 
 The menu must not contain remote server business logic. It may only open,
 organize, and control web surfaces.
@@ -197,7 +222,7 @@ and renders them as windows.
 ## Immediate construction sequence
 
 1. Extend shared contracts with remote web window opacity, surface mode,
-   bookmark references, 3D pose, and lock mode.
+   bookmark references, 3D pose, minimized state, and lock mode.
 2. Add max-10 window enforcement in the window manager and gateway.
 3. Implement Native Web Window Mode for real system window behavior, keyboard,
    dictation, copy/paste, bookmarks, navigation, and opacity.

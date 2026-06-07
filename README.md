@@ -131,6 +131,7 @@ pnpm compliance:check
 pnpm visionos:preflight
 pnpm visionos:workflow:plan
 pnpm visionos:native:plan
+pnpm visionos:testflight:plan
 pnpm workflow:check
 pnpm test:mac-builder
 ```
@@ -194,6 +195,30 @@ AWS_MAC_WORKER_CONFIRM=terminate-and-release-mac-host pnpm aws:mac:worker:teardo
 
 For App Store/TestFlight release planning, signing checks, IPA validation, and
 optional upload-tool evaluation, use `docs/workflows/app-store-release.md`.
+
+Current release mode: Apple account access has an existing issue under review.
+The project continues in implementation-first mode. Build the full feature set,
+run local and Mac Builder control-plane checks, and keep completed features
+ready for TestFlight. Upload, tester assignment, and local Vision Pro acceptance
+resume after Apple approval.
+
+Without a local Mac, real Vision Pro device testing is driven through the cloud
+Mac Builder and TestFlight:
+
+```bash
+VISIONOS_MAC_BUILDER_URL=http://<mac-builder-host>:3201 \
+APPLE_TEAM_ID=<team id> \
+pnpm visionos:testflight:preflight
+
+VISIONOS_MAC_BUILDER_URL=http://<mac-builder-host>:3201 \
+APPLE_TEAM_ID=<team id> \
+pnpm visionos:testflight:archive
+```
+
+TestFlight upload is a separate opt-in gate. Set
+`VISIONOS_TESTFLIGHT_UPLOAD=1` on the operator side and
+`MAC_BUILDER_ENABLE_TESTFLIGHT_UPLOAD=1` on the Mac Builder only after signing
+and App Store Connect API key material are configured on the Mac Builder.
 
 Install local git hooks:
 

@@ -44,6 +44,7 @@ struct GatewayWindow: Codable, Identifiable, Equatable {
     var minSize: GatewaySize
     var zIndex: Int
     var focused: Bool
+    var minimized: Bool?
     var locked: Bool
     var lockMode: String
     var clipboardPolicy: String

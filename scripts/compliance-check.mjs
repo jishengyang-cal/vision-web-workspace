@@ -52,6 +52,9 @@ const requiredScripts = [
   "visionos:workflow:plan",
   "visionos:native:plan",
   "visionos:mac-build:check",
+  "visionos:testflight:plan",
+  "visionos:testflight:preflight",
+  "visionos:testflight:archive",
   "dev:mac-builder:agent",
   "serve:mac-builder:agent",
   "aws:mac:plan",
@@ -88,6 +91,8 @@ const linuxRequiredScriptNames = [
   "visionos:preflight",
   "visionos:workflow:plan",
   "visionos:native:plan",
+  "visionos:testflight:plan",
+  "visionos:testflight:preflight",
   "aws:mac:plan"
 ];
 for (const name of linuxRequiredScriptNames) {
@@ -108,6 +113,9 @@ for (const id of ["xcode", "xcodebuild", "xcrun", "xcrun-simctl", "xcresulttool"
 const readme = readFileSync("README.md", "utf8");
 if (!readme.includes("Without macOS, Xcode, and the visionOS SDK")) {
   violations.push("README must preserve no-Mac/no-Xcode hard boundary");
+}
+if (!readme.includes("implementation-first mode")) {
+  violations.push("README must document the current Apple account review hold development mode");
 }
 
 const architecture = readFileSync("docs/architecture.md", "utf8");
@@ -167,6 +175,9 @@ for (const file of requiredFiles) {
 }
 
 const workflow = JSON.parse(readFileSync("workflows/visionos-development.json", "utf8"));
+if (workflow.releaseMode !== "implementation-first-account-review-hold") {
+  violations.push("visionOS workflow must record the current implementation-first Apple account review hold mode");
+}
 if (workflow.nativeProject?.sourceRoot !== "native/visionos") {
   violations.push("visionOS workflow must declare nativeProject.sourceRoot");
 }
@@ -204,7 +215,21 @@ if (!phaseIds.has("immersive-environment-reconstruction")) {
 if (!phaseIds.has("app-store-release-plan")) {
   violations.push("visionOS workflow is missing App Store release plan phase");
 }
+for (const id of ["full-scope-implementation", "apple-account-review-hold", "testflight-feature-acceptance"]) {
+  if (!phaseIds.has(id)) {
+    violations.push(`visionOS workflow is missing account-hold development phase: ${id}`);
+  }
+}
 const phaseById = new Map(workflow.phases.map((phase) => [phase.id, phase]));
+if (!phaseById.get("full-scope-implementation")?.command?.includes("pnpm workflow:check")) {
+  violations.push("full-scope implementation phase must keep local workflow checks in the loop");
+}
+if (!phaseById.get("apple-account-review-hold")?.capabilities?.includes("apple-account-required")) {
+  violations.push("Apple account review hold phase must remain apple-account-gated");
+}
+if (!phaseById.get("testflight-feature-acceptance")?.capabilities?.includes("device-required")) {
+  violations.push("TestFlight feature acceptance phase must require the Vision Pro device boundary");
+}
 if (!phaseById.get("aws-mac-worker-guard")?.command?.includes("aws:mac:worker:quota-status")) {
   violations.push("AWS Mac worker guard phase must check quota status");
 }
@@ -253,6 +278,25 @@ if (!macBuilderAgent.includes('"xcodegen"') || !macBuilderAgent.includes('"xcode
 }
 if (!macBuilderAgent.includes("MAC_BUILDER_TOKEN")) {
   violations.push("native Mac builder agent must support token-gated access");
+}
+if (!macBuilderAgent.includes("-exportArchive") || !macBuilderAgent.includes("visionos.exportIpa")) {
+  violations.push("native Mac builder agent must support audited archive export to IPA");
+}
+if (
+  !macBuilderAgent.includes("MAC_BUILDER_ENABLE_TESTFLIGHT_UPLOAD") ||
+  !macBuilderAgent.includes("MAC_BUILDER_APP_STORE_CONNECT_API_KEY_ID")
+) {
+  violations.push("native Mac builder agent must keep TestFlight upload behind explicit App Store Connect key configuration");
+}
+
+const visionosWorkflowScript = readFileSync("scripts/visionos-workflow.mjs", "utf8");
+for (const command of ["testflight-plan", "testflight-preflight", "testflight-archive"]) {
+  if (!visionosWorkflowScript.includes(command)) {
+    violations.push(`visionOS workflow script must expose ${command}`);
+  }
+}
+if (!visionosWorkflowScript.includes("VISIONOS_TESTFLIGHT_UPLOAD")) {
+  violations.push("visionOS TestFlight workflow must keep upload as an explicit opt-in");
 }
 
 const macBuilderBootstrap = readFileSync("scripts/mac-builder-bootstrap.sh", "utf8");
@@ -405,6 +449,9 @@ if (!gateway.includes('auditLevel: "lifecycle"')) {
 if (!gateway.includes("maxWorkspaceWindows") || !gateway.includes("defaultWindowOpacity")) {
   violations.push("gateway must normalize remote web window count and opacity fields");
 }
+if (!gateway.includes("minimized")) {
+  violations.push("gateway must normalize remote web window minimized state");
+}
 
 const releaseWorkflow = readFileSync("docs/workflows/app-store-release.md", "utf8");
 if (!releaseWorkflow.includes("AppUploader/AppUploader CLI can be evaluated as an optional release-uploader")) {
@@ -414,7 +461,20 @@ if (!releaseWorkflow.includes("must not receive")) {
   violations.push("release workflow must preserve credential boundary");
 }
 
+const remoteWindowWorkflow = readFileSync("docs/workflows/remote-web-window-workspace.md", "utf8");
+if (!remoteWindowWorkflow.includes("centered top bubble") || !remoteWindowWorkflow.includes("side with more available horizontal space")) {
+  violations.push("remote web window workflow must document minimize bubbles and smart sibling placement");
+}
+
+const windowManager = readFileSync("packages/window-manager/src/index.ts", "utf8");
+if (!windowManager.includes('"minimize"') || !windowManager.includes('"restore-window"') || !windowManager.includes("placeNewWindow")) {
+  violations.push("window manager must own minimize/restore and smart sibling placement");
+}
+
 const releaseInterface = JSON.parse(readFileSync("mcp/interfaces/app-store-release.json", "utf8"));
+if (releaseInterface.currentReleaseMode !== "implementation-first-account-review-hold") {
+  violations.push("App Store release interface must expose the current Apple account review hold mode");
+}
 const appuploaderBackend = releaseInterface.uploadBackends?.find((backend) => backend.id === "appuploader-cli");
 if (!appuploaderBackend || appuploaderBackend.mode !== "optional-third-party-fallback" || appuploaderBackend.requiresApproval !== true) {
   violations.push("AppUploader CLI must remain an explicitly approved optional fallback");

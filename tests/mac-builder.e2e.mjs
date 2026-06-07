@@ -18,8 +18,10 @@ try {
   await waitForHealth();
   assertMockDoesNotExecuteNativeTools();
   await testSuccessfulJobLifecycle();
+  await testArchiveJobLifecycle();
   await testFailedJobLifecycle();
   testWorkflowAdapterSuccess();
+  testWorkflowAdapterTestFlightArchive();
   testNoBuilderBoundary();
   console.log("Mac builder mock e2e passed.");
 } finally {
@@ -41,6 +43,22 @@ async function testSuccessfulJobLifecycle() {
   assert.ok(completed.job.artifacts.some((artifact) => artifact.type === "build-products"));
   assert.ok(completed.job.artifacts.some((artifact) => artifact.type === "xcresult"));
   assert.ok(completed.job.xcresult.uri.startsWith("mock://mac-builder/jobs/"));
+}
+
+async function testArchiveJobLifecycle() {
+  const created = await postJson("/jobs", createRequest("archive", "succeeded"));
+  assert.equal(created.job.status, "queued");
+  assert.equal(created.job.kind, "archive");
+  assert.equal(created.job.request.exportMethod, "development");
+
+  const running = await getJson(`/jobs/${created.job.id}`);
+  assert.equal(running.job.status, "running");
+
+  const completed = await getJson(`/jobs/${created.job.id}`);
+  assert.equal(completed.job.status, "succeeded");
+  assert.ok(completed.job.artifacts.some((artifact) => artifact.type === "archive"));
+  assert.ok(completed.job.artifacts.some((artifact) => artifact.type === "ipa"));
+  assert.ok(completed.job.artifacts.some((artifact) => artifact.type === "xcresult"));
 }
 
 async function testFailedJobLifecycle() {
@@ -73,6 +91,25 @@ function testWorkflowAdapterSuccess() {
   assert.match(result.stdout, /status: succeeded/);
   assert.match(result.stdout, /artifacts:/);
   assert.match(result.stdout, /xcresult:/);
+}
+
+function testWorkflowAdapterTestFlightArchive() {
+  const result = spawnSync("node", ["scripts/visionos-workflow.mjs", "testflight-archive"], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      VISIONOS_MAC_BUILDER_URL: baseUrl,
+      VISIONOS_MAC_BUILDER_POLL_MS: "1",
+      VISIONOS_MAC_BUILDER_MAX_POLLS: "4",
+      APPLE_TEAM_ID: "TEAMID1234"
+    }
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Submitting archive job/);
+  assert.match(result.stdout, /status: succeeded/);
+  assert.match(result.stdout, /archive:/);
+  assert.match(result.stdout, /ipa:/);
 }
 
 function testNoBuilderBoundary() {
