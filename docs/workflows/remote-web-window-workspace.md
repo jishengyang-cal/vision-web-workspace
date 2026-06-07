@@ -57,6 +57,12 @@ This mode gives the closest public-API match to native visionOS window
 interaction. It should be used for the initial validation of keyboard input,
 system dictation, copy/paste, browsing, and remote development surfaces.
 
+The native source owns a `WindowGroup`-based remote web window host. Each
+native window is opened from a shared workspace layout entry and hosts one
+remote URL in a web surface. The same layout contract is still used by the
+browser simulator, gateway, and mixed workspace so native mode does not become a
+separate authority source.
+
 Boundaries:
 
 - The app can control its web content view and toolbar.

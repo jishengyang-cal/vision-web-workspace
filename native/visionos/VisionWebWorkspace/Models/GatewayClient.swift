@@ -111,39 +111,51 @@ final class WorkspaceStore: ObservableObject {
     }
 
     func open(kind: String) {
-        guard layout.windows.count < WorkspaceWindowDefaults.maximumWindowCount else {
-            errorMessage = "Maximum 10 windows reached"
-            return
-        }
-
-        let sourceWindow = activeVisibleWindow()
-
         Task {
-            do {
-                let session = try await client.createSession(workspaceId: layout.id, kind: kind, windowId: nil)
-                appendWindow(for: session, sourceWindow: sourceWindow)
-                errorMessage = nil
-            } catch {
-                errorMessage = "Session creation failed"
-            }
+            _ = await createWindow(kind: kind, sourceWindow: activeVisibleWindow())
         }
     }
 
     func openSibling(of sourceWindow: GatewayWindow) {
+        Task {
+            _ = await createWindow(kind: sourceWindow.kind, sourceWindow: sourceWindow)
+        }
+    }
+
+    func createWindow(kind: String, sourceWindow: GatewayWindow? = nil) async -> GatewayWindow? {
         guard layout.windows.count < WorkspaceWindowDefaults.maximumWindowCount else {
             errorMessage = "Maximum 10 windows reached"
-            return
+            return nil
         }
 
-        Task {
-            do {
-                let session = try await client.createSession(workspaceId: layout.id, kind: sourceWindow.kind, windowId: nil)
-                appendWindow(for: session, sourceWindow: sourceWindow)
-                errorMessage = nil
-            } catch {
-                errorMessage = "Session creation failed"
-            }
+        do {
+            let session = try await client.createSession(workspaceId: layout.id, kind: kind, windowId: nil)
+            let window = appendWindow(for: session, sourceWindow: sourceWindow)
+            errorMessage = nil
+            return window
+        } catch {
+            errorMessage = "Session creation failed"
+            return nil
         }
+    }
+
+    func openBookmark(_ bookmark: GatewayBookmark) -> GatewayWindow? {
+        guard layout.windows.count < WorkspaceWindowDefaults.maximumWindowCount else {
+            errorMessage = "Maximum 10 windows reached"
+            return nil
+        }
+
+        let window = appendWindow(
+            id: "\(bookmark.kind)-\(Int(Date().timeIntervalSince1970 * 1000))",
+            title: bookmark.title,
+            kind: bookmark.kind,
+            url: bookmark.url,
+            surfaceMode: "direct-web",
+            bookmarkId: bookmark.id,
+            sourceWindow: activeVisibleWindow()
+        )
+        errorMessage = nil
+        return window
     }
 
     func toggleBookmark(windowId: String) {
@@ -346,10 +358,30 @@ final class WorkspaceStore: ObservableObject {
         touchLayout()
     }
 
-    private func appendWindow(for session: GatewaySession, sourceWindow: GatewayWindow?) {
+    private func appendWindow(for session: GatewaySession, sourceWindow: GatewayWindow?) -> GatewayWindow? {
+        appendWindow(
+            id: session.id,
+            title: "\(session.kind.capitalized) \(layout.windows.count + 1)",
+            kind: session.kind,
+            url: session.url,
+            surfaceMode: session.mode ?? "direct-web",
+            bookmarkId: nil,
+            sourceWindow: sourceWindow
+        )
+    }
+
+    private func appendWindow(
+        id: String,
+        title: String,
+        kind: String,
+        url: String,
+        surfaceMode: String,
+        bookmarkId: String?,
+        sourceWindow: GatewayWindow?
+    ) -> GatewayWindow? {
         guard layout.windows.count < WorkspaceWindowDefaults.maximumWindowCount else {
             errorMessage = "Maximum 10 windows reached"
-            return
+            return nil
         }
 
         let windowIndex = layout.windows.count
@@ -357,13 +389,13 @@ final class WorkspaceStore: ObservableObject {
         let now = ISO8601DateFormatter().string(from: Date())
         let placement = placementForNewWindow(sourceWindow: sourceWindow, index: windowIndex)
         let window = GatewayWindow(
-            id: session.id,
-            title: "\(session.kind.capitalized) \(displayIndex)",
-            kind: session.kind,
-            url: session.url,
-            surfaceMode: session.mode ?? "direct-web",
-            bookmarkId: nil,
-            navigation: GatewayWindowNavigation(entries: [session.url], currentIndex: 0, reloadToken: 0),
+            id: id,
+            title: title,
+            kind: kind,
+            url: url,
+            surfaceMode: surfaceMode,
+            bookmarkId: bookmarkId,
+            navigation: GatewayWindowNavigation(entries: [url], currentIndex: 0, reloadToken: 0),
             opacity: WorkspaceWindowDefaults.defaultOpacity,
             rect: placement.rect,
             pose3D: placement.pose3D,
@@ -384,6 +416,7 @@ final class WorkspaceStore: ObservableObject {
         } + [window]
         layout.activeWindowId = window.id
         touchLayout()
+        return window
     }
 
     private func activeVisibleWindow() -> GatewayWindow? {

@@ -36,9 +36,12 @@ xcodebuild \
   build
 ```
 
-The current app opens a mixed immersive workspace and two full immersive
-environment prototypes:
+The current app exposes both public-API window paths:
 
+- `WorkspaceConstants.nativeWebWindowGroupID`: native system windows that host
+  remote web surfaces. The system owns window movement, resizing, focus,
+  keyboard input, and dictation. The app owns URL navigation, bookmarks, copy
+  URL, opacity, and window lifecycle state.
 - `WorkspaceConstants.immersiveSpaceID`: mixed passthrough web workspace.
 - `WorkspaceConstants.officeEnvironmentSpaceID`: full office environment.
 - `WorkspaceConstants.loungeEnvironmentSpaceID`: full water lounge environment.
@@ -60,11 +63,11 @@ remote server surface, while the Vision Pro app owns the local window shell:
 navigation, bookmarks, opacity, input, copy/paste, layout, and spatial
 placement.
 
-The first native implementation target should use system windows for remote web
-surfaces so visionOS owns native move/resize behavior, keyboard input, and
-system dictation. The mixed immersive workspace remains the follow-up target
-for screen-locked custom windows with independent scale, rotation, angle,
-opacity, and lock state.
+Native Web Window Mode is the first validation target because it gives the
+closest public-API behavior for keyboard input, system dictation, copy/paste,
+focus, and system-level window adjustment. The mixed immersive workspace
+remains the follow-up target for screen-locked custom windows with independent
+scale, rotation, angle, opacity, and lock state.
 
 The detailed first-stage plan is
 `docs/workflows/remote-web-window-workspace.md`.

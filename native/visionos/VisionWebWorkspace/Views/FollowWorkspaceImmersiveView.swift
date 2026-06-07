@@ -4,7 +4,7 @@ import RealityKit
 import SwiftUI
 
 struct FollowWorkspaceImmersiveView: View {
-    @StateObject private var store = WorkspaceStore()
+    @ObservedObject var store: WorkspaceStore
     @State private var rootEntity = Entity()
     @State private var arkitSession = ARKitSession()
     @State private var worldTracking = WorldTrackingProvider()

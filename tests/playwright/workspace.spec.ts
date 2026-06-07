@@ -12,6 +12,17 @@ test("workspace opens and can create a terminal window through the gateway", asy
   await expect(page.getByText("Terminal 2")).toBeVisible();
 });
 
+test("workspace can open docs and logs remote surfaces", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Docs", exact: true }).click();
+  await expect(page.locator(".spatial-window").filter({ hasText: "Docs" })).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Logs", exact: true }).click();
+  await expect(page.locator(".spatial-window").filter({ hasText: "Logs" })).toHaveCount(1);
+  await expect(page.locator(".spatial-window")).toHaveCount(5);
+});
+
 test("window chrome can create, minimize, and restore browser-like windows", async ({ page }) => {
   await page.goto("/");
 

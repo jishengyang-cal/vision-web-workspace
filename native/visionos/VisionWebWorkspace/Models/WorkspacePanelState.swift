@@ -1,6 +1,7 @@
 import Foundation
 
 enum WorkspaceConstants {
+    static let nativeWebWindowGroupID = "NativeRemoteWebWindow"
     static let immersiveSpaceID = "WorkspaceImmersiveSpace"
     static let officeEnvironmentSpaceID = "OfficeEnvironmentSpace"
     static let loungeEnvironmentSpaceID = "LoungeEnvironmentSpace"

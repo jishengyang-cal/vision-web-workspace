@@ -119,6 +119,7 @@ BROWSER_URL=https://example.com
 - Tool doctor and workflow compliance checks.
 - Docker-backed local terminal and code-server services.
 - Native visionOS SwiftUI/RealityKit source skeleton and XcodeGen project spec.
+- Native system-window remote web surface source using `WindowGroup`.
 - Full immersive office and water lounge RealityKit environment prototypes.
 - Structured Mac Builder request metadata for the native project path.
 - Native Mac Builder Agent package for the real macOS execution plane.
@@ -231,8 +232,8 @@ pnpm hooks:install
 - Extend the shared window contract with opacity, remote surface mode,
   bookmark references, 3D pose, and lock mode.
 - Add max-10 window enforcement across the window manager and gateway.
-- Implement native remote web windows with system keyboard, dictation,
-  copy/paste, bookmarks, navigation, and opacity controls.
+- Validate native remote web windows on Mac Builder and TestFlight with system
+  keyboard, dictation, copy/paste, bookmarks, navigation, and opacity controls.
 - Convert the mixed workspace prototype from one panel into a menu plus
   independent spatial remote web windows.
 - Add real terminal gateway integration with ttyd or xterm.js.

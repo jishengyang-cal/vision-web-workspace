@@ -2,13 +2,20 @@ import SwiftUI
 
 @main
 struct VisionWebWorkspaceApp: App {
+    @StateObject private var store = WorkspaceStore()
+
     var body: some Scene {
         WindowGroup {
-            LauncherView()
+            LauncherView(store: store)
         }
 
+        WindowGroup("Remote Web Window", id: WorkspaceConstants.nativeWebWindowGroupID, for: String.self) { $windowID in
+            NativeWebWindowHostView(store: store, windowID: windowID)
+        }
+        .defaultSize(width: 980, height: 720)
+
         ImmersiveSpace(id: WorkspaceConstants.immersiveSpaceID) {
-            FollowWorkspaceImmersiveView()
+            FollowWorkspaceImmersiveView(store: store)
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
 

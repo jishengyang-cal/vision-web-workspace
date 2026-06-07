@@ -159,6 +159,7 @@ const requiredFiles = [
   "native/visionos/VisionWebWorkspace/Models/GatewayModels.swift",
   "native/visionos/VisionWebWorkspace/Models/GatewayClient.swift",
   "native/visionos/VisionWebWorkspace/Views/LauncherView.swift",
+  "native/visionos/VisionWebWorkspace/Views/NativeWebWindowHostView.swift",
   "native/visionos/VisionWebWorkspace/Views/FollowWorkspaceImmersiveView.swift",
   "native/visionos/VisionWebWorkspace/Views/ImmersiveEnvironmentView.swift",
   "native/visionos/VisionWebWorkspace/Views/WorkspacePanelView.swift",
@@ -337,6 +338,9 @@ const nativeApp = readFileSync("native/visionos/VisionWebWorkspace/VisionWebWork
 if (!nativeApp.includes("ImmersiveSpace") || !nativeApp.includes(".mixed")) {
   violations.push("native app must open a mixed ImmersiveSpace");
 }
+if (!nativeApp.includes("WindowGroup(\"Remote Web Window\"") || !nativeApp.includes("nativeWebWindowGroupID")) {
+  violations.push("native app must expose native WindowGroup remote web windows");
+}
 if (!nativeApp.includes("officeEnvironmentSpaceID") || !nativeApp.includes("loungeEnvironmentSpaceID") || !nativeApp.includes(".full")) {
   violations.push("native app must expose full immersive office and water lounge spaces");
 }
@@ -362,6 +366,14 @@ if (
 const browserWindow = readFileSync("native/visionos/VisionWebWorkspace/Views/BrowserWindowView.swift", "utf8");
 if (!browserWindow.includes("WKWebView")) {
   violations.push("native browser window must include WKWebView prototype surface");
+}
+
+const nativeWebWindowHost = readFileSync("native/visionos/VisionWebWorkspace/Views/NativeWebWindowHostView.swift", "utf8");
+if (!nativeWebWindowHost.includes("WebSurfaceView") || !nativeWebWindowHost.includes("openWindow")) {
+  violations.push("native WindowGroup host must render web surfaces and open sibling native windows");
+}
+if (!nativeWebWindowHost.includes("toggleBookmark") || !nativeWebWindowHost.includes("navigateBack") || !nativeWebWindowHost.includes("reload")) {
+  violations.push("native WindowGroup host must expose shell-owned navigation and bookmarks");
 }
 
 const immersiveEnvironmentFactory = readFileSync("native/visionos/VisionWebWorkspace/Models/ImmersiveEnvironmentSceneFactory.swift", "utf8");
@@ -526,5 +538,5 @@ function run(command) {
 }
 
 function isTextLike(file) {
-  return /\.(json|md|mjs|js|ts|tsx|css|html|ya?ml|gitignore)$/.test(file) || file === "LICENSE";
+  return /\.(json|md|mjs|js|ts|tsx|swift|css|html|ya?ml|gitignore)$/.test(file) || file === "LICENSE";
 }
